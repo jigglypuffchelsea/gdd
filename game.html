@@ -60,6 +60,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tag-entropy{background:#7f1d1d;color:#fca5a5}.tag-decision{background:#1e3a5f;color:#93c5fd}
 .tag-ops{background:#14532d;color:#86efac}.tag-ai{background:#4a1d96;color:#c4b5fd}.tag-hidden{background:#78350f;color:#fcd34d}
 .tag-deal-sm{background:#14532d;color:#86efac}.tag-deal-bg{background:#7c2d12;color:#fed7aa}.tag-expense{background:#7f1d1d;color:#fca5a5}
+.tag-timing{background:#1e3a5f;color:#7dd3fc}.tag-negotiate{background:#312e81;color:#a5b4fc}
+
+/* Card type visual bands */
+.card-band{height:4px;border-radius:var(--radius) var(--radius) 0 0;margin:-20px -20px 14px;width:calc(100% + 40px)}
+.band-decision{background:linear-gradient(90deg,#06b6d4,#3b82f6)}.band-entropy{background:linear-gradient(90deg,#ef4444,#f97316)}
+.band-ops{background:linear-gradient(90deg,#22c55e,#06b6d4)}.band-opp{background:linear-gradient(90deg,#eab308,#f97316)}
+.band-ai{background:linear-gradient(90deg,#a855f7,#6366f1)}.band-hidden{background:linear-gradient(90deg,#f97316,#ef4444)}
+.band-cascade{background:linear-gradient(90deg,#06b6d4,#a855f7)}.band-timing{background:linear-gradient(90deg,#3b82f6,#8b5cf6)}
+.band-negotiate{background:linear-gradient(90deg,#6366f1,#ec4899)}
+
+/* Option cost indicators */
+.opt-cost-neg{border-left:3px solid var(--red)}.opt-cost-pos{border-left:3px solid var(--green)}
+.opt-risk{border-left:3px solid var(--purple)}
+.opt-fs-badge{position:absolute;top:8px;right:10px;font-size:9px;color:var(--purple);background:#1a0533;padding:2px 6px;border-radius:4px}
+
+/* CEO diary */
+.ceo-diary{font-size:12px;color:var(--dim);font-style:italic;padding:10px 14px;background:linear-gradient(135deg,#0c1020,#141b2d);border-radius:var(--radius);margin-top:10px;border-left:2px solid var(--purple);animation:diaryIn .6s ease}
+@keyframes diaryIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+
+/* Season transition */
+.phase-transition{animation:phaseIn .4s ease}
+@keyframes phaseIn{from{opacity:0}to{opacity:1}}
 
 .option-btn{display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:8px;border-radius:var(--radius);
 border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32);color:var(--text);font-size:13px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);line-height:1.5;position:relative;overflow:hidden}
@@ -296,6 +318,31 @@ const CASCADE={
         {l:'B2',t:'從內部拔擢',fx:{cash:-20,hb:6},fs:{n:'內部培養',d:3,fx:{hb:5},rnd:{fail:{roots:-8,hb:-5},ch:30}}}]}
   }
 };
+
+// ── Timing cards (時機型：現在做 vs 等)
+{id:19,title:'設備採購窗口',year:[2,4],desc:'供應商本季限時打折 30%。下季恢復原價。你的產線設備確實老化了。',tag:'timing',
+opts:[{l:'A',t:'趁折扣立刻採購',fx:{cash:-100,hb:3},fs:{n:'產能提升',d:2,fx:{roots:5}},diary:'「七折買到的不只是設備，是下一季的底氣。」'},{l:'B',t:'等下季再說',fx:{},diary:'「錢留著是安全感。但機會溜走了。」'}]},
+{id:20,title:'人才市場低谷',year:[2,5],desc:'大公司裁員潮，市場上湧現一批好人才。獵頭說窗口只有這一季。',tag:'timing',
+opts:[{l:'A',t:'趁低谷搶人',fx:{cash:-60,hb:8},diary:'「別人裁人我搶人。景氣回來的時候，他們會感謝今天的決定。」'},{l:'B',t:'現在不缺人，先觀望',fx:{hb:-2},diary:'「人才永遠缺。只是此刻看不到罷了。」'}]},
+{id:21,title:'政策補助截止',year:[2,4],desc:'產業升級補助申請截止下季。文件很多，要投入人力準備。',tag:'timing',
+opts:[{l:'A',t:'花人力申請',fx:{hb:-2},fs:{n:'補助到帳',d:2,fx:{cash:80}},diary:'「繁瑣的文件背後是免費的資金。值得。」'},{l:'B',t:'太忙了，放棄申請',fx:{},diary:'「忙到連免費的錢都沒時間拿。這是不是有什麼問題？」'}]},
+{id:22,title:'競品弱勢期',year:[3,5],desc:'主要競爭對手出了品質醜聞，他們的客戶在觀望。要不要趁機搶客？',tag:'timing',
+opts:[{l:'A',t:'主動接觸對手客戶',fx:{cash:-40,roots:6,hb:-2},diary:'「趁人之危？不。是趁客戶需要替代方案的時候出現。」'},{l:'B',t:'不趁人之危，專注自己',fx:{roots:2},diary:'「品德比市佔率重要。至少我是這麼告訴自己的。」'}]},
+{id:23,title:'匯率好轉',year:[3,5],desc:'原物料進口匯率暫時降低 15%。要不要趁機囤貨？',tag:'timing',
+opts:[{l:'A',t:'大量囤貨降成本',fx:{cash:-80},fs:{n:'庫存效益',d:2,fx:{cash:40}},diary:'「匯率是上天偶爾打開的窗。抓住了就是利潤。」'},{l:'B',t:'不囤，維持靈活現金',fx:{},diary:'「囤貨就是把錢變成不能動的東西。在這種時候。」'}]},
+// ── Negotiation cards (談判型)
+{id:24,title:'大客戶續約談判',year:[3,5],desc:'最大客戶合約到期，續約談判桌上你們對坐。他們要降價 10%。',tag:'negotiate',
+opts:[{l:'A',t:'強硬拒絕降價',fx:{roots:-8,hb:3},fs:{n:'客戶態度',d:2,fx:{roots:10},rnd:{fail:{roots:-12},ch:40}},diary:'「談判桌上眨眼的那個人輸了。今天我沒眨。」'},
+  {l:'B',t:'接受降價換長約',fx:{cash:-30,roots:5},diary:'「讓利 10% 換三年穩定。這筆帳算得過來。」'},
+  {l:'C',t:'提出加值方案（不降價但加服務）',fx:{cash:-20,roots:3,hb:2},diary:'「最好的談判不是你贏我輸，是把餅做大。」'}]},
+{id:25,title:'供應商重新議價',year:[2,4],desc:'年度合約到了。供應商漲價 10%。你手上有替代方案但還沒成熟。',tag:'negotiate',
+opts:[{l:'A',t:'威脅換人（bluff）',fx:{},fs:{n:'議價結果',d:1,fx:{cash:30},rnd:{fail:{roots:-5,cash:-20},ch:35}},diary:'「Bluff 的關鍵是——你得讓對方覺得你不是在 bluff。」'},
+  {l:'B',t:'接受漲價，加速備援',fx:{cash:-50},fs:{n:'備援就位',d:3,fx:{cash:20}},diary:'「接受現實，但同時佈局。時間站在有準備的人這邊。」'},
+  {l:'C',t:'提出長約鎖價',fx:{cash:-30,roots:2},diary:'「鎖價三年。通膨是確定的，鎖價是選擇。」'}]},
+{id:26,title:'投資人條件',year:[3,5],desc:'外部投資人願意投 $200 萬，但要 20% 股權 + 董事席位。',tag:'negotiate',
+opts:[{l:'A',t:'接受條件',fx:{cash:200,hb:-3},fs:{n:'投資人壓力',d:4,fx:{hb:-5}},diary:'「$200 萬到帳的那一刻很爽。但從此每個決策都要跟股東報告。」'},
+  {l:'B',t:'堅持底線：15% 無董事席',fx:{hb:3},fs:{n:'談判結果',d:1,fx:{cash:150},rnd:{fail:{},ch:40}},diary:'「堅持底線的代價可能是空手而歸。但這是我的公司。」'},
+  {l:'C',t:'可轉債方案（不稀釋股權）',fx:{cash:150},fs:{n:'轉債到期',d:6,fx:{cash:-180}},diary:'「可轉債讓我保住控制權。但利息是時間的代價。」'}]},
 
 // Hidden decision cards (Challenge mode)
 const HIDDEN_DC=[
@@ -540,21 +587,41 @@ function showAIEvent(){
 
 // ═══════ RENDER HELPERS ═══════
 function renderCard(card,type){
-  const tagClass=type==='cascade'?'tag-ai':type==='ai'?'tag-ai':type==='hidden'?'tag-hidden':'tag-decision';
-  const tagText=type==='cascade'?'🔗 級聯決策':type==='ai'?'AI 事件':type==='hidden'?'極端場景':card.opts?.length>2?'三路選擇':'決策';
+  const tt=card.tag||type;
+  const tagClass=tt==='cascade'?'tag-ai':tt==='ai'?'tag-ai':tt==='hidden'?'tag-hidden':tt==='timing'?'tag-timing':tt==='negotiate'?'tag-negotiate':'tag-decision';
+  const tagText=tt==='cascade'?'級聯決策':tt==='ai'?'AI 事件':tt==='hidden'?'極端場景':tt==='timing'?'限時決策':tt==='negotiate'?'談判':card.opts?.length>2?'三路選擇':'決策';
   const ceoHints={1:'短期數字 vs 長期結構',2:'留人 vs 建組織',3:'舒適 vs 成長',4:'保錢 vs 保人',5:'獎勵過去 vs 綁定未來',
     6:'防守 vs 進攻 vs 合作',7:'砍人 vs 改結構',8:'透明的成本 vs 隱瞞的代價',9:'全押 vs 不做 vs 半調子',10:'行動 vs 等待的代價',
-    11:'冒險 vs 穩定',12:'擴張 vs 聚焦',13:'治標 vs 治本',14:'補丁 vs 重建',15:'文化 vs 業績',16:'修 vs 拖',17:'硬碰 vs 認輸',18:'投入 vs 拖延'};
+    11:'冒險 vs 穩定',12:'擴張 vs 聚焦',13:'治標 vs 治本',14:'補丁 vs 重建',15:'文化 vs 業績',16:'修 vs 拖',17:'硬碰 vs 認輸',18:'投入 vs 拖延',
+    19:'折扣的誘惑 vs 現金的安全',20:'搶人的時機 vs 人力的成本',21:'文件的麻煩 vs 免費的資金',22:'趁虛而入 vs 堅守品德',23:'囤貨的賭注 vs 靈活的現金',
+    24:'強硬 vs 讓步 vs 創意',25:'虛張聲勢 vs 接受現實',26:'股權稀釋 vs 資金需求'};
   const hint=ceoHints[card.id]||'';
-  let h=`<div class="phase-title">${type==='cascade'?'🔗 後續決策':type==='ai'?'🤖 市場事件':'📋 CEO 決策'}</div><div class="card">
+  // Card type band
+  const bandMap={decision:'band-decision',ai:'band-ai',hidden:'band-hidden',cascade:'band-cascade',timing:'band-timing',negotiate:'band-negotiate'};
+  const bandClass=bandMap[card.tag||type]||'band-decision';
+  // Type icon (SVG inline)
+  const icons={decision:'⚖️',ai:'⚙️',hidden:'💀',cascade:'🔗',timing:'⏳',negotiate:'🤝',entropy:'🌀',ops:'⚡'};
+  const icon=icons[card.tag||type]||'📋';
+  // Phase title
+  const titleMap={cascade:'後續決策',ai:'市場事件',timing:'時機決策',negotiate:'談判桌',hidden:'極端場景'};
+  const phTitle=titleMap[card.tag||type]||'CEO 決策';
+
+  let h=`<div class="phase-title">${icon} ${phTitle}</div><div class="card phase-transition">
+    <div class="card-band ${bandClass}"></div>
     <span class="card-tag ${tagClass}">${tagText}</span>
     <div class="card-title">${card.title}</div><div class="card-desc">${card.desc}</div>
     ${hint?`<div style="font-size:11px;color:var(--purple);margin-bottom:10px;padding:6px 10px;background:#1a0533;border-radius:6px">💭 CEO 的取捨：${hint}</div>`:''}`;
   card.opts.forEach((o,i)=>{
     const lock=o.gate&&((o.gate.artery&&artery()<o.gate.artery)||(o.gate.roots&&G.roots<o.gate.roots)||(o.gate.hb&&G.hb<o.gate.hb));
-    h+=`<button class="option-btn ${lock?'locked':''}" onclick="${lock?'void(0)':`pickDec(${card.id},${i})`}">
+    // Cost indicator class
+    let costCls='';
+    if(o.fx?.cash<-50)costCls='opt-cost-neg';
+    else if(o.fx?.cash>0)costCls='opt-cost-pos';
+    if(o.fs)costCls+=' opt-risk';
+    h+=`<button class="option-btn ${costCls} ${lock?'locked':''}" onclick="${lock?'void(0)':`pickDec(${card.id},${i})`}">
+      ${o.fs?'<span class="opt-fs-badge">⏳ 伏筆</span>':''}
       <span class="opt-label">${o.l}</span>${o.t}
-      <span class="opt-effect">${fT(o.fx)}${o.fs?' ⏳':''}${lock?' 🔒':''}</span></button>`;
+      <span class="opt-effect">${fT(o.fx)}${lock?' 🔒':''}</span></button>`;
   });
   // Safety valve: if ALL options locked, show skip button
   const allLocked=card.opts.every(o=>o.gate&&((o.gate.artery&&artery()<o.gate.artery)||(o.gate.roots&&G.roots<o.gate.roots)||(o.gate.hb&&G.hb<o.gate.hb)));
@@ -604,7 +671,14 @@ function pickDec(cid,oi){
     const branch=opt.l.startsWith('A')?'A':'B';
     if(CASCADE[cid][branch])G._pendingCascade={parentId:cid,branch,parentFsIdx:G.foreshadows.length-1};
   }
-  clamp();updateSB();nextPhase();
+  clamp();updateSB();
+
+  // CEO diary — brief pause with diary entry then continue
+  if(opt.diary){
+    const el=document.getElementById('content');
+    el.innerHTML+=`<div class="ceo-diary">${opt.diary}</div>`;
+    setTimeout(()=>nextPhase(),1500);
+  } else { nextPhase(); }
 }
 
 // ═══════ INVESTMENT ═══════
@@ -708,7 +782,8 @@ function showEntropy(){
   const can=artery()>=c.g;
   const tag=c.tag==='hidden'?'tag-hidden':'tag-entropy';
   const tagT=c.tag==='hidden'?'極端事件':'熵';
-  let h=`<div class="phase-title">🌀 熵牌</div><div class="card">
+  let h=`<div class="phase-title">🌀 熵牌 — 強制事件</div><div class="card phase-transition">
+    <div class="card-band band-entropy"></div>
     <span class="card-tag ${tag}">${tagT}</span>
     <div class="card-title">${c.title}</div><div class="card-desc">${c.desc}</div>
     <button class="option-btn" onclick="rEnt('e')"><span class="opt-label">硬扛</span>承受全額<span class="opt-effect">${fT(c.e)}</span></button>
@@ -743,9 +818,9 @@ function showDec(){
 function showExec(){
   const idx=[];while(idx.length<2){const i=Math.floor(Math.random()*OC.length);if(!idx.includes(i))idx.push(i);}
   const drawn=idx.map(i=>OC[i]);
-  let h=`<div class="phase-title">⚡ 執行卡 — 選 1 張，另 1 張自動結算</div>`;
+  let h=`<div class="phase-title">⚡ 執行卡 — 選 1 張處理</div>`;
   drawn.forEach((c,i)=>{
-    h+=`<div class="card"><span class="card-tag tag-ops">營運</span>
+    h+=`<div class="card phase-transition"><div class="card-band band-ops"></div><span class="card-tag tag-ops">營運</span>
       <div class="card-title">${c.title}</div><div class="card-desc">${c.desc}</div>
       <button class="option-btn" onclick="rExec(${i},'a')"><span class="opt-label">A</span>${c.a.t}<span class="opt-effect">${fT(c.a.fx)}</span></button>
       <button class="option-btn" onclick="rExec(${i},'b')"><span class="opt-label">B</span>${c.b.t}<span class="opt-effect">${c.b.fs?'⏳ 延遲':'—'}</span></button></div>`;
@@ -766,7 +841,8 @@ function rollOpp(){
 function showOpp(){
   if(!window._opp){nextPhase();return;}
   const o=window._opp;
-  const h=`<div class="phase-title">🎯 商機</div><div class="card" style="border-color:#164e63">
+  const h=`<div class="phase-title">🎯 商機</div><div class="card phase-transition" style="border-color:#164e63">
+    <div class="card-band band-opp"></div>
     <span class="card-tag tag-opp">好消息</span>
     <div class="card-title">${o.name}</div><div class="card-desc">${o.desc}</div>
     <div style="font-size:14px;font-weight:700;color:var(--green);margin:8px 0">${fT(o.fx)}</div>
@@ -1048,6 +1124,17 @@ function doSettle(){
     if(yy===3&&G.completedProjects.length>0){milestone='🏗️ 第三年完成了戰略計畫！公司有了護城河。';G.milestones.push('Y3計畫完成');}
     if(yy===4&&G.hb>60&&G.roots>60){milestone='⭐ 第四年三條命脈都在健康區——你是少數做到這一點的 CEO。';G.milestones.push('Y4全線健康');}
     if(yy===5){milestone='🎯 最後一年。你的每一個決策都在決定公司的最終估值。';G.milestones.push('Y5終局');}
+    // Generate annual narrative
+    const yearDecs=G.decisions.filter(d=>Math.floor(d.season/4)+1===yy);
+    if(yearDecs.length){
+      const keyDec=yearDecs[0];
+      const hbTrend=a.hb>b.hb?'團隊士氣穩步上升':'團隊壓力不小';
+      const rtTrend=a.roots>b.roots?'客戶基礎在擴大':'客戶關係需要更多關注';
+      const cashTrend=a.cash>b.cash?'財務狀況改善了':'現金流還是緊張';
+      milestone+=`<div style="margin-top:8px;font-size:11px;color:var(--dim);font-style:italic;line-height:1.6">
+        「${G.companyName}」的第${yy}年：${hbTrend}，${rtTrend}，${cashTrend}。
+        ${yearDecs.length>1?`你做了 ${yearDecs.length} 個重大決策，其中「${keyDec.title}」可能影響最深遠。`:''}</div>`;
+    }
   }
 
   let h=`<div class="phase-title">📊 ${G.companyName} — 董事會報告 ${sL()}</div><div class="card">
