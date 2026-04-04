@@ -126,11 +126,12 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 
 #start-screen{display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;background:radial-gradient(ellipse at 50% 30%,#0c1a2e 0%,var(--bg) 70%)}
 #start-screen h1{font-size:36px;letter-spacing:3px;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-#start-screen p{color:var(--dim);margin:12px 0 28px;line-height:1.8;max-width:440px;font-size:14px}
-.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:420px;margin:0 auto}
-.mode-btn{padding:20px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;text-align:left;transition:all .2s}
+#start-screen p{color:var(--dim);margin:12px 0 20px;line-height:1.8;max-width:560px;font-size:14px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:560px;margin:0 auto}
+.mode-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:560px;margin:0 auto}
+.mode-btn{padding:14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;text-align:left;transition:all .2s}
 .mode-btn:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 20px rgba(6,182,212,.15)}
-.mode-btn h3{font-size:15px;margin-bottom:6px}.mode-btn p{font-size:11px;color:var(--dim);margin:0;line-height:1.5}
+.mode-btn h3{font-size:14px;margin-bottom:4px}.mode-btn p{font-size:10px;color:var(--dim);margin:0;line-height:1.4}
 
 @media(max-width:768px){
 #sidebar{position:fixed;left:-100%;width:85%;max-width:320px;z-index:20;transition:left .3s cubic-bezier(.4,0,.2,1)}
@@ -143,6 +144,7 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 .invest-btn{padding:14px;min-height:48px}
 .btn-primary{padding:16px;font-size:15px}
 .mode-grid{grid-template-columns:1fr}
+.mode-grid-4{grid-template-columns:1fr 1fr}
 }
 /* Industry selection */
 .industry-btn{transition:all .2s !important}.industry-btn.selected{border-color:var(--accent) !important;background:linear-gradient(135deg,#0c1a2e,#162040) !important;box-shadow:0 0 12px rgba(6,182,212,.25) !important}
@@ -228,11 +230,11 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 <div style="margin-bottom:16px"><input id="company-name" type="text" placeholder="為你的公司取個名字" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:8px;font-size:14px;width:220px;text-align:center;outline:none" maxlength="12"></div>
 <div style="margin-bottom:16px">
 <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">選擇你的產業</div>
-<div class="mode-grid" id="industry-grid">
-<button class="mode-btn industry-btn selected" data-ind="tech" onclick="pickIndustry(this,'tech')"><h3>🖥️ 科技業</h3><p>團隊強、客戶少<br>高心跳 · 低根系</p></button>
-<button class="mode-btn industry-btn" data-ind="food" onclick="pickIndustry(this,'food')"><h3>🍜 餐飲業</h3><p>客戶多、現金少<br>高根系 · 低心跳</p></button>
-<button class="mode-btn industry-btn" data-ind="mfg" onclick="pickIndustry(this,'mfg')"><h3>🏭 製造業</h3><p>資金厚、支出高<br>均衡但壓力大</p></button>
-<button class="mode-btn industry-btn" data-ind="med" onclick="pickIndustry(this,'med')"><h3>🏥 醫療業</h3><p>穩定但法規多<br>衰減慢 · 事件多</p></button>
+<div class="mode-grid-4" id="industry-grid">
+<button class="mode-btn industry-btn selected" data-ind="tech" onclick="pickIndustry(this,'tech')"><h3>🖥️ 科技</h3><p>團隊強 客戶少</p></button>
+<button class="mode-btn industry-btn" data-ind="food" onclick="pickIndustry(this,'food')"><h3>🍜 餐飲</h3><p>客戶多 現金少</p></button>
+<button class="mode-btn industry-btn" data-ind="mfg" onclick="pickIndustry(this,'mfg')"><h3>🏭 製造</h3><p>資金厚 支出高</p></button>
+<button class="mode-btn industry-btn" data-ind="med" onclick="pickIndustry(this,'med')"><h3>🏥 醫療</h3><p>穩定 法規多</p></button>
 </div>
 </div>
 <div id="legacy-display"></div>
