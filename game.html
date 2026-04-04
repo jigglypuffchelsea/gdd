@@ -155,6 +155,7 @@ border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13
 <div>
 <h1>熵與奮鬥者</h1>
 <p>一個讓你在 20 個季度內，親身經歷公司從創立到第五年的所有關鍵轉折。<br>遊戲不教你答案。遊戲讓你親身見證自己決策的終點。</p>
+<div style="margin-bottom:16px"><input id="company-name" type="text" placeholder="為你的公司取個名字" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:8px;font-size:14px;width:220px;text-align:center;outline:none" maxlength="12"></div>
 <div id="legacy-display"></div>
 <div style="margin-bottom:16px">
   <button onclick="importLegacy()" style="background:none;border:1px solid var(--border);color:var(--dim);padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;margin:0 4px">📥 匯入傳承碼</button>
@@ -171,7 +172,7 @@ border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13
 <button class="mob-toggle" onclick="toggleSidebar()">☰</button>
 <div class="mob-overlay" id="mob-overlay" onclick="toggleSidebar()"></div>
 <aside id="sidebar">
-<div class="sb-header"><div class="sb-logo">熵與奮鬥者</div><div class="sb-season" id="sb-season">Y1Q1</div></div>
+<div class="sb-header"><div class="sb-logo" id="sb-logo">熵與奮鬥者</div><div class="sb-season" id="sb-season">Y1Q1</div></div>
 <div class="sb-section">
 <div class="sb-title">財務</div>
 <div class="cash-block"><div class="cash-main" id="sb-cash">$392 萬</div>
@@ -200,7 +201,7 @@ const G={cash:392,hb:70,roots:55,revenue:180,expense:140,expDelta:0,revDelta:0,s
 foreshadows:[],investEffects:[],activeProject:null,projectCooldown:0,completedProjects:[],
 mode:'normal',maxSeasons:20,ai:null,ai2:null,aiPhase:{},ai2Phase:{},traits:[],decayHb:2,decayRoots:1,
 assets:[],stocks:[],marketPrices:{'deal-x1':30,'deal-x2':40,'deal-x3':20},currentDealCard:null,currentExpenseCard:null,
-history:[],decisions:[]};
+history:[],decisions:[],companyName:'',nearDeaths:0,milestones:[],spiralCount:0,flywheelCount:0};
 
 const artery=()=>{const e=G.expense+G.expDelta;return e<=0?100:Math.min(100,Math.max(0,G.cash/(e*4)*100));};
 const eR=()=>G.revenue+G.revDelta, eE=()=>G.expense+G.expDelta;
@@ -238,11 +239,11 @@ opts:[{l:'A',t:'全力支持',fx:{cash:-100,hb:5,roots:-5},fs:{n:'新業務',d:6
 opts:[{l:'A',t:'客戶多元化計畫',fx:{cash:-90,roots:-3,hb:3},fs:{n:'多元化見效',d:5,fx:{roots:15}},gate:{artery:50}},{l:'B',t:'再觀察一季',fx:{roots:-4}}]},
 // Phase 3 cards
 {id:11,title:'合夥人攤牌',year:[2,4],desc:'合夥人要全力衝線上業務，否則要把股份賣掉。他負責 40% 核心技術。',
-opts:[{l:'A',t:'同意投 $300 萬衝線上',fx:{cash:-300,hb:6,roots:-4},fs:{n:'線上業務',d:5,fx:{cash:80},rnd:{fail:{cash:-100,hb:-8},ch:40}},gate:{artery:55}},{l:'B',t:'拒絕，接受合夥人離開',fx:{cash:-120,hb:-10,roots:-3},fs:{n:'團隊重整',d:4,fx:{hb:8,roots:5}},gate:{artery:40}}]},
+opts:[{l:'A',t:'同意投 $300 萬衝線上',fx:{cash:-300,hb:6,roots:-4},fs:{n:'線上業務',d:5,fx:{cash:80},rnd:{fail:{cash:-100,hb:-8},ch:40}},gate:{artery:55}},{l:'B',t:'拒絕，接受合夥人離開',fx:{cash:-120,hb:-10,roots:-3},fs:{n:'團隊重整',d:4,fx:{hb:8,roots:5}},gate:{artery:25}},{l:'C',t:'談判延期——請他給你一季緩衝',fx:{hb:-5,roots:-2},fs:{n:'合夥人最後通牒',d:1,fx:{hb:-8}}}]},
 {id:12,title:'海外大單',year:[3,5],desc:'東南亞大企業想合作，首單 $200 萬，但要設海外服務點。',
 opts:[{l:'A',t:'設立海外服務點',fx:{cash:-150,hb:-5,roots:3},fs:{n:'海外站穩',d:6,fx:{roots:10}},gate:{artery:55}},{l:'B',t:'婉拒，專注國內',fx:{hb:3,roots:5},fs:{n:'國內深耕',d:4,fx:{roots:8}}},{l:'C',t:'遠端輕模式',fx:{cash:-60,hb:-2,roots:1},fs:{n:'兩頭空',d:4,fx:{hb:3}}}]},
 {id:13,title:'前後台薪酬失衡',year:[2,4],desc:'後台三個月走四個人。前台最高薪是後台平均的 3.2 倍。',
-opts:[{l:'A',t:'後台全員調薪 15%',fx:{cash:-45,hb:4},fs:{n:'前台不滿',d:4,fx:{hb:-10,cash:-30}},gate:{artery:40}},{l:'B',t:'導入前後台聯動薪酬',fx:{cash:-80,hb:-3},fs:{n:'聯動成熟',d:5,fx:{hb:10,roots:4}},gate:{hb:35}}]},
+opts:[{l:'A',t:'後台全員調薪 15%',fx:{cash:-45,hb:4},fs:{n:'前台不滿',d:4,fx:{hb:-10,cash:-30}},gate:{artery:40}},{l:'B',t:'導入前後台聯動薪酬',fx:{cash:-80,hb:-3},fs:{n:'聯動成熟',d:5,fx:{hb:10,roots:4}},gate:{hb:35}},{l:'C',t:'暫時不動，私下安撫離職的人',fx:{hb:-4,roots:-1},fs:{n:'不滿持續',d:2,fx:{hb:-6}}}]},
 {id:14,title:'業績提成衝突',year:[2,4],desc:'純提成不公平。老客戶躺著拿提成，新市場開拓的人拼死拼活拿得少。',
 opts:[{l:'A',t:'調高新客戶提成至 3 倍',fx:{cash:-30,hb:2},fs:{n:'提成對立',d:4,fx:{roots:4,hb:-6}}},{l:'B',t:'多維指標考核',fx:{cash:-50,hb:-4},fs:{n:'多維見效',d:4,fx:{roots:10,hb:8,cash:-45}},gate:{hb:40}}]},
 {id:15,title:'組織文化稀釋',year:[3,5],desc:'最近走的三個人都是第一年的老員工。「公司變了。」',
@@ -431,6 +432,7 @@ const TRAITS=[
 let usedD=[],phases=[];
 
 function startGame(mode){
+  G.companyName=document.getElementById('company-name').value.trim()||'我的公司';
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   G.mode=mode;
@@ -519,18 +521,37 @@ function showAIEvent(){
 function renderCard(card,type){
   const tagClass=type==='cascade'?'tag-ai':type==='ai'?'tag-ai':type==='hidden'?'tag-hidden':'tag-decision';
   const tagText=type==='cascade'?'🔗 級聯決策':type==='ai'?'AI 事件':type==='hidden'?'極端場景':card.opts?.length>2?'三路選擇':'決策';
-  let h=`<div class="phase-title">${type==='ai'?'🤖 AI 事件':'📋 決策牌'}</div><div class="card">
+  const ceoHints={1:'短期數字 vs 長期結構',2:'留人 vs 建組織',3:'舒適 vs 成長',4:'保錢 vs 保人',5:'獎勵過去 vs 綁定未來',
+    6:'防守 vs 進攻 vs 合作',7:'砍人 vs 改結構',8:'透明的成本 vs 隱瞞的代價',9:'全押 vs 不做 vs 半調子',10:'行動 vs 等待的代價',
+    11:'冒險 vs 穩定',12:'擴張 vs 聚焦',13:'治標 vs 治本',14:'補丁 vs 重建',15:'文化 vs 業績',16:'修 vs 拖',17:'硬碰 vs 認輸',18:'投入 vs 拖延'};
+  const hint=ceoHints[card.id]||'';
+  let h=`<div class="phase-title">${type==='cascade'?'🔗 後續決策':type==='ai'?'🤖 市場事件':'📋 CEO 決策'}</div><div class="card">
     <span class="card-tag ${tagClass}">${tagText}</span>
-    <div class="card-title">${card.title}</div><div class="card-desc">${card.desc}</div>`;
+    <div class="card-title">${card.title}</div><div class="card-desc">${card.desc}</div>
+    ${hint?`<div style="font-size:11px;color:var(--purple);margin-bottom:10px;padding:6px 10px;background:#1a0533;border-radius:6px">💭 CEO 的取捨：${hint}</div>`:''}`;
   card.opts.forEach((o,i)=>{
     const lock=o.gate&&((o.gate.artery&&artery()<o.gate.artery)||(o.gate.roots&&G.roots<o.gate.roots)||(o.gate.hb&&G.hb<o.gate.hb));
     h+=`<button class="option-btn ${lock?'locked':''}" onclick="${lock?'void(0)':`pickDec(${card.id},${i})`}">
       <span class="opt-label">${o.l}</span>${o.t}
       <span class="opt-effect">${fT(o.fx)}${o.fs?' ⏳':''}${lock?' 🔒':''}</span></button>`;
   });
+  // Safety valve: if ALL options locked, show skip button
+  const allLocked=card.opts.every(o=>o.gate&&((o.gate.artery&&artery()<o.gate.artery)||(o.gate.roots&&G.roots<o.gate.roots)||(o.gate.hb&&G.hb<o.gate.hb)));
+  if(allLocked){
+    h+=`<div style="margin-top:8px;padding:10px;background:#451a03;border:1px solid #92400e;border-radius:8px;font-size:12px;color:var(--orange)">
+      ⚠️ 所有選項的條件都不滿足。你的公司目前無力處理這個問題。</div>
+      <button class="btn-primary" style="background:var(--orange)" onclick="skipLockedDec(${card.id})">被迫跳過（心跳 -3，根系 -2）</button>`;
+  }
   h+=`</div>`;
   document.getElementById('content').innerHTML=h;
   window._curCard=card;
+}
+
+function skipLockedDec(cid){
+  usedD.push(cid);
+  G.hb-=3;G.roots-=2;
+  G.decisions.push({season:G.season,label:sL(),title:window._curCard?.title||'',chosen:'跳過',chosenText:'無力處理，被迫跳過',chosenFx:{hb:-3,roots:-2},allOpts:[],hasForeshadow:false,fsName:''});
+  clamp();updateSB();nextPhase();
 }
 
 function pickDec(cid,oi){
@@ -569,19 +590,35 @@ function pickDec(cid,oi){
 function showInvest(){
   const mx=artery()>=70?2:artery()>=50?1:0;const noC=artery()<30;
   const items=[
-    {name:'調薪／發獎金',cost:60,fx:{hb:7},desc:'心跳 +7',tp:'hb'},
-    {name:'員工培訓',cost:100,fx:{hb:5},desc:'心跳+5，+3/季×3季',tp:'hb',sus:{hb:3,s:3}},
-    {name:'客戶回饋',cost:50,fx:{roots:5},desc:'根系 +5',tp:'cl'},
-    {name:'客戶深耕',cost:80,fx:{roots:4},desc:'根系+4，+3/季×4季',tp:'cl',sus:{roots:3,s:4}}
+    // ── 基礎（常駐）──
+    {name:'調薪／發獎金',cost:60,fx:{hb:7},desc:'心跳 +7「花錢買安心」',tp:'hb',ceo:'最直接的留人手段，但不改結構'},
+    {name:'員工培訓',cost:100,fx:{hb:5},desc:'心跳+5，+3/季×3季「投資人才」',tp:'hb',sus:{hb:3,s:3},ceo:'短期花大錢，但持續回報——人才是最好的資產'},
+    {name:'客戶回饋',cost:50,fx:{roots:5},desc:'根系 +5「維護關係」',tp:'cl',ceo:'便宜但只治標，客戶需要的是長期價值'},
+    {name:'客戶深耕',cost:80,fx:{roots:4},desc:'根系+4，+3/季×4季「建立忠誠」',tp:'cl',sus:{roots:3,s:4},ceo:'最划算的長期投資，但需要耐心等回報'},
   ];
-  // Y3+ unlock competitive investments
-  if(yr()>=3){
-    items.push({name:'🆕 市場拓展',cost:120,fx:{roots:6},desc:'根系+6，+2/季×3季',tp:'cl',sus:{roots:2,s:3},unlockY:3});
-    items.push({name:'🆕 技術研發',cost:150,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',unlockY:3,permExp:-5});
+  // ── 狀態觸發型（根據你的處境動態出現）──
+  if(G.hb<50) items.push({name:'🚨 緊急團建',cost:30,fx:{hb:5},desc:'心跳+5「緊急滅火」',tp:'hb',ceo:'士氣低迷時的急救，但治標不治本'});
+  if(G.roots<40) items.push({name:'🚨 客戶挽留方案',cost:40,fx:{roots:6},desc:'根系+6「止血」',tp:'cl',ceo:'客戶要跑了才挽留，成本是預防的兩倍'});
+  if(artery()<35) items.push({name:'🏦 緊急貸款',cost:-80,fx:{},desc:'現金+$80萬，支出永久+$10萬',tp:'hb',permExp:10,ceo:'借錢續命——利息會一直跟著你'});
+  // ── 取捨型（犧牲一個維度換另一個）──
+  if(yr()>=2){
+    items.push({name:'加速擴張',cost:90,fx:{roots:8,hb:-3},desc:'根系+8 心跳-3「拼市場傷團隊」',tp:'cl',ceo:'快速擴張的代價是團隊被壓榨'});
+    items.push({name:'內部效率優化',cost:70,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',permExp:-5,ceo:'精簡流程省成本，但過程中團隊會有陣痛'});
   }
-  // Y5+ unlock legacy investment
+  // ── Y3+ 競爭類 ──
+  if(yr()>=3){
+    items.push({name:'🆕 市場拓展',cost:120,fx:{roots:6},desc:'根系+6，+2/季×3季',tp:'cl',sus:{roots:2,s:3},ceo:'開拓新市場需要持續投入，但客戶來源更多元'});
+    items.push({name:'🆕 技術研發',cost:150,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',permExp:-5,ceo:'技術護城河——短期花大錢，長期省更多'});
+    items.push({name:'🆕 品牌行銷',cost:80,fx:{roots:3,hb:2},desc:'根系+3 心跳+2「內外兼修」',tp:'cl',ceo:'品牌投資回報慢，但復利效果驚人'});
+  }
+  // ── Y4+ 進階 ──
+  if(yr()>=4){
+    items.push({name:'🆕 數位轉型',cost:130,fx:{hb:-2,roots:5},desc:'根系+5 心跳-2，支出永久-$8萬',tp:'cl',permExp:-8,ceo:'轉型期團隊陣痛，但長期降本增效'});
+    items.push({name:'🆕 高管教練',cost:60,fx:{hb:6},desc:'心跳+6「投資領導力」',tp:'hb',ceo:'好的教練讓你的決策品質提升，影響整個組織'});
+  }
+  // ── Y5 傳承 ──
   if(yr()>=5){
-    items.push({name:'🆕 企業傳承規劃',cost:100,fx:{hb:10,roots:-3},desc:'心跳+10 根系-3（交接期陣痛）',tp:'hb',unlockY:5});
+    items.push({name:'🆕 企業傳承規劃',cost:100,fx:{hb:10,roots:-3},desc:'心跳+10 根系-3',tp:'hb',ceo:'交接期客戶不安，但組織因為有方向而凝聚'});
   }
   const pj=getAvailProj();
   let h=`<div class="phase-title">💰 投資階段　<span style="font-size:11px;color:var(--dim);font-weight:400">可投 ${mx} 項</span></div>`;
@@ -594,12 +631,15 @@ function showInvest(){
       <div style="font-size:11px;color:var(--dim)">${ec.desc}</div></div>`;
     G.cash=Math.max(0,G.cash-ec.cost);G.currentExpenseCard=null;clamp();updateSB();
   }
-  h+=`<div class="card"><div class="card-title">標準投資</div><div class="invest-grid">`;
+  h+=`<div class="card"><div class="card-title">📋 ${G.companyName} — 預算會議</div>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:10px">身為 CEO，你這季要把錢花在哪裡？</div>
+    <div class="invest-grid">`;
   items.forEach((o,i)=>{
-    const lk=noC||o.cost>G.cash||(o.tp==='cl'&&noC)||mx===0;
+    const lk=(o.cost>0&&(noC||o.cost>G.cash||(o.tp==='cl'&&noC)))||mx===0;
     h+=`<button class="invest-btn ${lk?'locked':''}" data-i="${i}" onclick="tInv(this,${i})">
-      <span class="inv-cost">$${o.cost}萬</span><span class="inv-name">${o.name}</span>
-      <div class="inv-fx">${o.desc}</div></button>`;
+      <span class="inv-cost">${o.cost>=0?'$'+o.cost+'萬':'+$'+Math.abs(o.cost)+'萬'}</span><span class="inv-name">${o.name}</span>
+      <div class="inv-fx">${o.desc}</div>
+      ${o.ceo?`<div style="font-size:9px;color:var(--purple);margin-top:3px;font-style:italic">💭 ${o.ceo}</div>`:''}</button>`;
   });
   h+=`</div></div>`;
   if(yr()>=2){
@@ -628,7 +668,9 @@ function showInvest(){
   window._inv=items;window._sel=[];window._mx=mx;
 }
 function tInv(el,i){const s=window._sel;const x=s.indexOf(i);if(x>=0){s.splice(x,1);el.classList.remove('selected');}else if(s.length<window._mx){s.push(i);el.classList.add('selected');}}
-function cInv(){(window._sel||[]).forEach(i=>{const o=window._inv[i];G.cash-=o.cost;aFx(o.fx);if(o.sus)G.investEffects.push({...o.sus,r:o.sus.s});if(o.permExp)G.expDelta+=o.permExp;});clamp();updateSB();nextPhase();}
+function cInv(){(window._sel||[]).forEach(i=>{const o=window._inv[i];G.cash-=o.cost;aFx(o.fx);if(o.sus)G.investEffects.push({...o.sus,r:o.sus.s});if(o.permExp)G.expDelta+=o.permExp;
+  G.decisions.push({season:G.season,label:sL(),title:'投資：'+o.name,chosen:'—',chosenText:o.name,chosenFx:{cash:-o.cost,...o.fx},allOpts:[],hasForeshadow:false,fsName:''});
+});clamp();updateSB();nextPhase();}
 function getAvailProj(){if(G.activeProject)return[];return PROJ.filter(p=>yr()>=p.minY&&!G.completedProjects.includes(p.id)&&getM(p.gt)>p.gv).slice(0,2);}
 function getM(t){return t==='roots'?G.roots:t==='hb'?G.hb:artery();}
 function mL(t){return t==='roots'?'根系':t==='hb'?'心跳':'動脈';}
@@ -957,19 +999,40 @@ function doSettle(){
 
   clamp();const a={cash:G.cash,hb:G.hb,roots:G.roots,art:artery()};
 
-  // Mood sentence
+  // Track flywheel/spiral
+  if(G.hb>65&&G.roots>65)G.flywheelCount++;
+  if(G.hb<35||G.roots<25||artery()<30){G.spiralCount++;if(artery()<15)G.nearDeaths++;}
+
+  // Mood sentence with CEO narrative
   const artD=a.art-b.art,hbD=a.hb-b.hb,rtD=a.roots-b.roots;
   const totalD=artD+hbD+rtD;
-  let mood,moodClass;
-  if(G.hb<35||G.roots<25||artery()<30){mood='⚠️ 死亡螺旋啟動中...';moodClass='mood-danger';}
-  else if(G.hb>65&&G.roots>65){mood='🚀 飛輪全速運轉！';moodClass='mood-great';}
-  else if(totalD>10){mood='📈 穩健成長的一季';moodClass='mood-good';}
-  else if(totalD>-5){mood='➡️ 平穩度過';moodClass='mood-good';}
-  else if(totalD>-15){mood='📉 有壓力的一季';moodClass='mood-warn';}
-  else{mood='🔥 危險的一季';moodClass='mood-danger';}
+  let mood,moodClass,ceoMood='';
+  if(G.hb<35||G.roots<25||artery()<30){
+    mood='⚠️ 死亡螺旋啟動中';moodClass='mood-danger';
+    ceoMood='你感覺公司正在失速下墜。每個壞消息都在加速下一個壞消息。';
+  }else if(G.hb>65&&G.roots>65){
+    mood='🚀 飛輪全速運轉';moodClass='mood-great';
+    ceoMood='團隊士氣帶動客戶滿意，客戶滿意帶動業績，業績帶動士氣——正向循環啟動了。';
+  }else if(totalD>10){mood='📈 穩健成長';moodClass='mood-good';ceoMood='這一季的決策方向對了，繼續保持。';
+  }else if(totalD>-5){mood='➡️ 平穩度過';moodClass='mood-good';ceoMood='沒有大起大落——但不行動也是一種決策。';
+  }else if(totalD>-15){mood='📉 承壓中';moodClass='mood-warn';ceoMood='壓力在累積。如果不主動調整，情況會繼續惡化。';
+  }else{mood='🔥 危險';moodClass='mood-danger';ceoMood='多個指標同時惡化。需要立刻做出取捨。';}
 
-  let h=`<div class="phase-title">📊 ${sL()} 結算</div><div class="card">
-    <div class="settle-mood ${moodClass}">${mood}</div>`;
+  // Year milestone
+  let milestone='';
+  if(qr()===4){
+    const yy=yr();
+    if(yy===1&&G.alive){milestone='🏁 第一年存活！你的公司撐過了最脆弱的新創期。';G.milestones.push('Y1存活');}
+    if(yy===2&&artery()>50){milestone='📊 第二年穩定成長。市場開始認識你的品牌。';G.milestones.push('Y2穩定');}
+    if(yy===3&&G.completedProjects.length>0){milestone='🏗️ 第三年完成了戰略計畫！公司有了護城河。';G.milestones.push('Y3計畫完成');}
+    if(yy===4&&G.hb>60&&G.roots>60){milestone='⭐ 第四年三條命脈都在健康區——你是少數做到這一點的 CEO。';G.milestones.push('Y4全線健康');}
+    if(yy===5){milestone='🎯 最後一年。你的每一個決策都在決定公司的最終估值。';G.milestones.push('Y5終局');}
+  }
+
+  let h=`<div class="phase-title">📊 ${G.companyName} — 董事會報告 ${sL()}</div><div class="card">
+    <div class="settle-mood ${moodClass}">${mood}</div>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:10px;font-style:italic">${ceoMood}</div>
+    ${milestone?`<div style="font-size:12px;padding:8px 10px;background:#052e16;border:1px solid #166534;border-radius:6px;margin-bottom:10px;color:var(--green)">${milestone}</div>`:''}`;
   [{l:'現金動脈',b:b.art,a:a.art,u:'%'},{l:'組織心跳',b:b.hb,a:a.hb,u:''},{l:'客戶根系',b:b.roots,a:a.roots,u:''},{l:'可用現金',b:b.cash,a:a.cash,u:'萬'}].forEach(m=>{
     const d=Math.round((m.a-m.b)*10)/10;const cls=d>0?'delta-pos':d<0?'delta-neg':'';
     const fmt=v=>m.u==='%'?Math.round(v)+'%':m.u==='萬'?'$'+Math.round(v)+'萬':Math.round(v);
@@ -995,15 +1058,30 @@ function endGame(){
   // Final history snapshot
   G.history.push({s:G.season,cash:Math.round(G.cash),hb:G.hb,roots:G.roots,art:Math.round(artery()),nw:calcNW()});
 
-  let h=`<div id="game-over"><h1>${G.alive?'五年經營終了':'公司倒閉'}</h1>
-    <p style="color:var(--dim)">${G.alive?`走過 ${G.season+1} 季`:`${sL()} 資金斷裂`}　AI對手：${G.ai}${G.ai2?' + '+G.ai2:''}</p>
+  // CEO summary narrative
+  let ceoSummary='';
+  if(!G.alive)ceoSummary=`「${G.companyName}」在 ${sL()} 資金斷裂。回頭看，每一個「再撐一下」的決定都在消耗最後的餘裕。`;
+  else if(grade==='S')ceoSummary=`「${G.companyName}」成為了行業標桿。你證明了一件事：好的 CEO 不是做出完美決策，而是在每個不完美的選擇中找到最佳路徑。`;
+  else if(grade==='A')ceoSummary=`「${G.companyName}」交出了穩健的成績單。你在壓力下保持了冷靜，在誘惑面前守住了原則。`;
+  else if(grade==='B')ceoSummary=`「${G.companyName}」活下來了，但離卓越還有距離。回顧決策時間軸，你會看到哪些轉折點可以做得更好。`;
+  else ceoSummary=`「${G.companyName}」的經營充滿挑戰。每一次跌倒都是學習——覆盤裡藏著下一局的答案。`;
+
+  let h=`<div id="game-over"><h1>${G.alive?G.companyName+' — 五年經營終了':'💀 '+G.companyName+' — 倒閉'}</h1>
+    <p style="color:var(--dim);font-style:italic;max-width:500px;margin:0 auto">${ceoSummary}</p>
     <div class="go-score">${score}</div><div class="go-grade" style="color:${gc}">${grade} 級</div>
     <div class="stat-grid">
       <div class="stat-box"><div class="label">現金動脈</div><div class="val">${Math.round(artery())}% ${ze(artery())}</div></div>
       <div class="stat-box"><div class="label">組織心跳</div><div class="val">${G.hb} ${ze(G.hb)}</div></div>
       <div class="stat-box"><div class="label">客戶根系</div><div class="val">${G.roots} ${ze(G.roots)}</div></div>
       <div class="stat-box"><div class="label">淨資產</div><div class="val">$${calcNW()}萬</div></div>
-    </div>`;
+    </div>
+    <div style="display:flex;justify-content:center;gap:16px;margin:12px 0;font-size:11px;color:var(--dim)">
+      <span>⚡ 飛輪啟動 ${G.flywheelCount} 季</span>
+      <span>🌀 螺旋觸發 ${G.spiralCount} 季</span>
+      <span>💀 差點死亡 ${G.nearDeaths} 次</span>
+      <span>📋 重大決策 ${G.decisions.length} 次</span>
+    </div>
+    ${G.milestones.length?`<div style="font-size:11px;color:var(--green);margin-bottom:8px">里程碑：${G.milestones.join(' → ')}</div>`:''}`;
 
   // ═══════ REVIEW SYSTEM (覆盤) ═══════
   h+=`<div class="review-section">
@@ -1133,6 +1211,7 @@ function clearLegacy(){
 // ═══════ SIDEBAR ═══════
 function updateSB(){
   const a=artery();
+  document.getElementById('sb-logo').textContent=G.companyName||'熵與奮鬥者';
   document.getElementById('sb-season').textContent=sL();
   document.getElementById('sb-cash').textContent=`$${Math.round(G.cash)} 萬`;
   document.getElementById('sb-apct').textContent=Math.round(a)+'%';
