@@ -49,6 +49,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-bottom:6px;font-weight:600}
 .tag-entropy{background:#7f1d1d;color:#fca5a5}.tag-decision{background:#1e3a5f;color:#93c5fd}
 .tag-ops{background:#14532d;color:#86efac}.tag-ai{background:#4a1d96;color:#c4b5fd}.tag-hidden{background:#78350f;color:#fcd34d}
+.tag-deal-sm{background:#14532d;color:#86efac}.tag-deal-bg{background:#7c2d12;color:#fed7aa}.tag-expense{background:#7f1d1d;color:#fca5a5}
 
 .option-btn{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:7px;border-radius:8px;
 border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;line-height:1.5}
@@ -103,6 +104,32 @@ border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13
 .mob-overlay.show{display:block}
 }
 .mob-toggle{display:none;position:fixed;top:8px;left:8px;z-index:11;background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:8px;font-size:13px;cursor:pointer}
+
+/* Dashboard modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:90%;max-width:600px;max-height:85vh;overflow-y:auto;padding:24px}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer}
+.chart-wrap{background:var(--card);border-radius:8px;padding:16px;margin-bottom:16px}
+.chart-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.detail-box{background:var(--card);border-radius:8px;padding:10px}
+.detail-box .dl{font-size:10px;color:var(--dim)}.detail-box .dv{font-size:16px;font-weight:700;margin-top:2px}
+
+/* Settlement mood */
+.settle-mood{padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:600;text-align:center}
+.mood-great{background:#052e16;color:var(--green);border:1px solid #166534}
+.mood-good{background:#172554;color:var(--blue);border:1px solid #1e40af}
+.mood-warn{background:#451a03;color:var(--orange);border:1px solid #92400e}
+.mood-danger{background:#450a0a;color:var(--red);border:1px solid #991b1b}
+
+/* Opportunity tag */
+.tag-opp{background:#164e63;color:#67e8f9}
+
+/* Net worth button in sidebar */
+.nw-btn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:11px;margin-top:6px;transition:all .15s}
+.nw-btn:hover{border-color:var(--accent)}
+.nw-btn .nw-val{font-size:14px;font-weight:700;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -150,7 +177,9 @@ border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13
 // ═══════ STATE ═══════
 const G={cash:392,hb:70,roots:55,revenue:180,expense:140,expDelta:0,revDelta:0,season:0,alive:true,hbFloor:0,
 foreshadows:[],investEffects:[],activeProject:null,projectCooldown:0,completedProjects:[],
-mode:'normal',maxSeasons:20,ai:null,ai2:null,aiPhase:{},ai2Phase:{},traits:[],decayHb:2,decayRoots:1};
+mode:'normal',maxSeasons:20,ai:null,ai2:null,aiPhase:{},ai2Phase:{},traits:[],decayHb:2,decayRoots:1,
+assets:[],stocks:[],marketPrices:{'deal-x1':30,'deal-x2':40,'deal-x3':20},currentDealCard:null,currentExpenseCard:null,
+history:[],decisions:[]};
 
 const artery=()=>{const e=G.expense+G.expDelta;return e<=0?100:Math.min(100,Math.max(0,G.cash/(e*4)*100));};
 const eR=()=>G.revenue+G.revDelta, eE=()=>G.expense+G.expDelta;
@@ -257,7 +286,70 @@ const OC=[
 {title:'加班趕交付',desc:'客戶臨時追加訂單。',a:{t:'加班趕出 — 拿現金',fx:{cash:30,hb:-4}},b:{t:'保護團隊拒單',fx:{},fs:{n:'團隊信任',d:3,fx:{hb:5}}},au:{hb:-1}},
 {title:'供應商漲價',desc:'主要供應商通知原料漲 15%。',a:{t:'吸收成本',fx:{cash:-25}},b:{t:'轉嫁給客戶',fx:{},fs:{n:'轉嫁結果',d:2,fx:{roots:-2},rnd:{fail:{roots:-4},ch:50}}},au:{cash:-15}},
 {title:'員工私下抱怨',desc:'匿名反映：「公司越來越沒人情味。」',a:{t:'辦團建活動 — 花錢治標',fx:{cash:-15,hb:3}},b:{t:'找主管私下了解',fx:{},fs:{n:'治本改善',d:2,fx:{hb:4},rnd:{fail:{hb:-2},ch:50}}},au:{hb:-2}},
-{title:'媒體邀約曝光',desc:'行業媒體來邀採訪。',a:{t:'安排受訪',fx:{hb:-2,roots:4}},b:{t:'婉拒專注營運',fx:{},fs:{n:'口碑傳播',d:3,fx:{roots:2}}},au:{}}
+{title:'媒體邀約曝光',desc:'行業媒體來邀採訪。',a:{t:'安排受訪',fx:{hb:-2,roots:4}},b:{t:'婉拒專注營運',fx:{},fs:{n:'口碑傳播',d:3,fx:{roots:2}}},au:{}},
+// ── 擴充執行卡 ──
+{title:'客戶延遲付款',desc:'大客戶通知應收帳款要延 60 天。',a:{t:'接受延期，維持關係',fx:{cash:-30,roots:2}},b:{t:'催款施壓',fx:{cash:15,roots:-3}},au:{cash:-10}},
+{title:'新人試用期表現差',desc:'上月新招的兩個人，主管反映跟不上節奏。',a:{t:'延長試用 + 安排導師',fx:{cash:-15,hb:2}},b:{t:'直接淘汰重招',fx:{hb:-3},fs:{n:'招聘口碑',d:3,fx:{hb:-2}}},au:{hb:-1}},
+{title:'競品挖牆腳',desc:'聽說競爭對手在接觸你的資深業務。',a:{t:'主動加薪留人',fx:{cash:-40,hb:4}},b:{t:'不動聲色觀察',fx:{},fs:{n:'人才流動',d:2,fx:{hb:-4},rnd:{fail:{hb:-6},ch:40}}},au:{hb:-1}},
+{title:'辦公室搬遷機會',desc:'有個更好的辦公地點，但搬遷要停工一週。',a:{t:'搬！長期省成本',fx:{cash:-40},fs:{n:'新辦公室',d:2,fx:{hb:4}}},b:{t:'不搬，維持穩定',fx:{}},au:{}},
+{title:'產品品質投訴',desc:'本季收到三起客戶品質投訴，集中在同一批貨。',a:{t:'全面召回 + 補償',fx:{cash:-35,roots:3}},b:{t:'個案處理不公開',fx:{roots:-2},fs:{n:'品質隱患',d:3,fx:{roots:-5}}},au:{roots:-2}},
+{title:'員工提出遠端工作',desc:'核心團隊希望每週在家工作兩天。',a:{t:'同意試行',fx:{hb:3,roots:-1}},b:{t:'婉拒，強調團隊協作',fx:{hb:-2}},au:{hb:-1}},
+{title:'年度健檢報告',desc:'員工健檢結果出爐，三人需要休假治療。',a:{t:'批准帶薪病假',fx:{cash:-20,hb:4}},b:{t:'按最低標準處理',fx:{hb:-3}},au:{hb:-1}},
+{title:'客戶要求客製化',desc:'重要客戶要求針對他們做產品客製化。',a:{t:'投入資源客製',fx:{cash:-30,roots:5,hb:-2}},b:{t:'引導使用標準方案',fx:{roots:-2}},au:{roots:-1}},
+{title:'合作夥伴邀約',desc:'同業提議共同參展，費用各半。',a:{t:'參加聯展',fx:{cash:-20,roots:3}},b:{t:'自己辦小型活動',fx:{cash:-10,roots:1}},au:{}},
+{title:'庫存積壓',desc:'倉庫裡的庫存已經堆了兩季，佔用現金。',a:{t:'打折清倉',fx:{cash:25,roots:-2}},b:{t:'轉為贈品送客戶',fx:{cash:-5,roots:3}},au:{cash:-10}},
+{title:'技術人員加班爭議',desc:'研發團隊連續三週加班，開始有怨言。',a:{t:'補發加班費 + 調休',fx:{cash:-25,hb:3}},b:{t:'承諾下季改善排程',fx:{},fs:{n:'排程改善',d:2,fx:{hb:3},rnd:{fail:{hb:-3},ch:40}}},au:{hb:-2}},
+{title:'政府補助申請',desc:'有一筆產業升級補助可以申請，但文件很多。',a:{t:'花人力申請',fx:{hb:-1},fs:{n:'補助到帳',d:2,fx:{cash:60}}},b:{t:'不申請，專注本業',fx:{}},au:{}},
+{title:'辦公設備老化',desc:'辦公室的印表機和投影機接連故障。',a:{t:'全面更新設備',fx:{cash:-25,hb:2}},b:{t:'只修不換',fx:{cash:-10}},au:{cash:-5}},
+{title:'實習生轉正決定',desc:'兩個實習生表現不錯，但只有一個正職缺。',a:{t:'兩個都留',fx:{cash:-20,hb:3}},b:{t:'只留一個',fx:{hb:-1}},au:{}},
+{title:'客戶推薦新客',desc:'老客戶介紹了一個潛在大客戶，需要你親自拜訪。',a:{t:'親自拜訪',fx:{hb:-1,roots:4}},b:{t:'派業務去',fx:{roots:2}},au:{roots:-1}}
+];
+
+// ═══════ DEAL CARDS (System A) ═══════
+const DEALS=[
+{id:'deal-s1',name:'社區早餐店加盟',type:'small',cost:50,cf:8,desc:'穩定的社區客源，月營收可預期'},
+{id:'deal-s2',name:'出租套房',type:'small',cost:40,cf:6,desc:'地段不錯的套房，已有穩定租客'},
+{id:'deal-s3',name:'自動販賣機網絡',type:'small',cost:30,cf:5,desc:'佈點在三個辦公大樓，維運成本低'},
+{id:'deal-s4',name:'線上課程平台',type:'small',cost:60,cf:10,desc:'已錄好的課程，每季被動授權收入'},
+{id:'deal-s5',name:'停車場經營權',type:'small',cost:70,cf:12,desc:'商業區停車場五年經營權'},
+{id:'deal-s6',name:'洗衣店連鎖加盟',type:'small',cost:80,cf:15,desc:'三家分店，自助洗衣穩定回收'},
+{id:'deal-b1',name:'收購競爭對手工廠',type:'big',cost:200,cf:40,desc:'整併產能，立刻提升市佔率',artGate:50},
+{id:'deal-b2',name:'商業地產投資',type:'big',cost:250,cf:45,desc:'精華地段商辦，租金穩定',artGate:50},
+{id:'deal-b3',name:'子公司併購',type:'big',cost:180,cf:35,desc:'上下游整合，降低供應鏈風險',artGate:50}
+];
+
+const STOCKS=[
+{id:'deal-x1',name:'新創科技公司股份',vol:'high',base:30},
+{id:'deal-x2',name:'生技公司股份',vol:'high',base:40},
+{id:'deal-x3',name:'綠能產業基金',vol:'low',base:20}
+];
+
+// ═══════ EXPENSE CARDS (System D) ═══════
+const EXPENSES=[
+{id:'exp-s1',name:'辦公室漏水維修',tier:'small',cost:15,desc:'天花板漏水損壞文件和設備'},
+{id:'exp-s2',name:'員工團建聚餐',tier:'small',cost:20,desc:'HR 建議辦一場大型團建活動'},
+{id:'exp-s3',name:'電腦設備更新',tier:'small',cost:20,desc:'多台工作電腦同時故障'},
+{id:'exp-s4',name:'商標註冊費用',tier:'small',cost:25,desc:'有人搶註了你的品牌商標'},
+{id:'exp-m1',name:'關鍵設備維修',tier:'medium',cost:30,desc:'生產線核心設備突然故障'},
+{id:'exp-m2',name:'客戶退貨賠償',tier:'medium',cost:35,desc:'一批產品品質問題，大客戶索賠'},
+{id:'exp-m3',name:'消防安檢罰款',tier:'medium',cost:40,desc:'消防檢查發現違規，被開罰單'},
+{id:'exp-m4',name:'供應商漲價補差',tier:'medium',cost:50,desc:'主要原料突然大幅漲價'},
+{id:'exp-l1',name:'核心專利侵權訴訟',tier:'large',cost:60,desc:'競爭對手指控專利侵權'},
+{id:'exp-l2',name:'稅務稽查補繳',tier:'large',cost:70,desc:'國稅局查帳，需補繳加罰款'},
+{id:'exp-l3',name:'資安事件善後',tier:'large',cost:75,desc:'遭駭客攻擊，客戶資料外洩'},
+{id:'exp-l4',name:'廠房設備重大故障',tier:'large',cost:80,desc:'中央空調和電力系統同時故障'}
+];
+
+// ═══════ OPPORTUNITY CARDS (商機牌 — 正面事件) ═══════
+const OPPS=[
+{name:'政府補助',desc:'產業升級補助核准了！',fx:{cash:80}},
+{name:'戰略合作邀約',desc:'大企業主動找你合作，帶來新客源。',fx:{cash:120,roots:5}},
+{name:'老客戶加單',desc:'最大客戶追加了一批訂單。',fx:{cash:50}},
+{name:'口碑轉介紹',desc:'滿意的客戶介紹了兩個新客戶。',fx:{cash:30,roots:3}},
+{name:'行業獎項',desc:'你的公司被提名行業最佳雇主！',fx:{roots:8,hb:3}},
+{name:'技術授權金',desc:'你的專利被同業授權使用，收到權利金。',fx:{cash:150}},
+{name:'應收提前到帳',desc:'大客戶提前付款，現金流改善。',fx:{cash:40}},
+{name:'旺季效應',desc:'市場需求暴增，訂單排到下季。',fx:{cash:60}}
 ];
 
 const PROJ=[
@@ -314,17 +406,24 @@ function applyTraits(){
 function runSeason(){
   if(!G.alive||G.season>=G.maxSeasons){endGame();return;}
   updateSB();
-  phases=['invest'];
+  // Record history snapshot
+  G.history.push({s:G.season,cash:Math.round(G.cash),hb:G.hb,roots:G.roots,art:Math.round(artery()),nw:calcNW()});
+  // Expense triggers inline in invest phase now
+  if(G.season>0)tryExpense();
+  phases=[];
+  phases.push('invest');
   if(isDec()){
     phases.push('entropy');
     if(G.mode==='challenge')phases.push('entropy2');
-    // AI special event chance
     if(shouldTriggerAIEvent())phases.push('aiEvent');
     phases.push('decision');
   } else {
     phases.push('execution');
+    // Opportunity card chance in operation seasons
+    if(rollOpp()) phases.push('opportunity');
   }
   phases.push('settle');
+  phases.push('postSettle'); // combined market + deal
   nextPhase();
 }
 
@@ -332,7 +431,7 @@ function nextPhase(){
   if(!G.alive){endGame();return;}
   if(!phases.length){G.season++;runSeason();return;}
   const p=phases.shift();
-  const map={invest:showInvest,entropy:showEntropy,entropy2:showEntropy,decision:showDec,execution:showExec,settle:doSettle,aiEvent:showAIEvent};
+  const map={invest:showInvest,entropy:showEntropy,entropy2:showEntropy,decision:showDec,execution:showExec,settle:doSettle,aiEvent:showAIEvent,market:showMarket,deal:showDeal,opportunity:showOpp,postSettle:showPostSettle};
   (map[p]||nextPhase)();
 }
 
@@ -408,6 +507,15 @@ function showInvest(){
   ];
   const pj=getAvailProj();
   let h=`<div class="phase-title">💰 投資階段　<span style="font-size:11px;color:var(--dim);font-weight:400">可投 ${mx} 項</span></div>`;
+  // Inline expense notification
+  if(G.currentExpenseCard){
+    const ec=G.currentExpenseCard;
+    const tier=ec.tier==='large'?'⚡⚡⚡':ec.tier==='medium'?'⚡⚡':'⚡';
+    h+=`<div class="card" style="border-color:#7f1d1d"><span class="card-tag tag-entropy">${tier} 意外支出</span>
+      <div style="font-size:13px;font-weight:600">${ec.name} — <span style="color:var(--red)">-$${ec.cost}萬</span></div>
+      <div style="font-size:11px;color:var(--dim)">${ec.desc}</div></div>`;
+    G.cash=Math.max(0,G.cash-ec.cost);G.currentExpenseCard=null;clamp();updateSB();
+  }
   h+=`<div class="card"><div class="card-title">標準投資</div><div class="invest-grid">`;
   items.forEach((o,i)=>{
     const lk=noC||o.cost>G.cash||(o.tp==='cl'&&noC)||mx===0;
@@ -493,6 +601,197 @@ function showExec(){
 }
 function rExec(ci,ch){const cs=window._oc;const c=cs[ci],o=cs[1-ci];if(ch==='a')aFx(c.a.fx);else{if(c.b.fs)G.foreshadows.push({n:c.b.fs.n,trigger:G.season+c.b.fs.d,fx:{...c.b.fs.fx},rnd:c.b.fs.rnd});if(c.b.fx)aFx(c.b.fx);}if(o.au)aFx(o.au);clamp();updateSB();nextPhase();}
 
+// ═══════ UTILITY ═══════
+function calcNW(){return Math.round(G.cash+G.assets.reduce((s,a)=>s+a.cost,0)+G.stocks.reduce((s,st)=>s+G.marketPrices[st.dealCardId],0));}
+
+// ═══════ OPPORTUNITY (商機牌) ═══════
+function rollOpp(){
+  const base=artery()>60?0.55:artery()>=40?0.45:0.30;
+  if(Math.random()<base){window._opp=OPPS[Math.floor(Math.random()*OPPS.length)];return true;}
+  return false;
+}
+function showOpp(){
+  if(!window._opp){nextPhase();return;}
+  const o=window._opp;
+  const h=`<div class="phase-title">🎯 商機</div><div class="card" style="border-color:#164e63">
+    <span class="card-tag tag-opp">好消息</span>
+    <div class="card-title">${o.name}</div><div class="card-desc">${o.desc}</div>
+    <div style="font-size:14px;font-weight:700;color:var(--green);margin:8px 0">${fT(o.fx)}</div>
+    <button class="btn-primary" onclick="claimOpp()">收下 →</button></div>`;
+  document.getElementById('content').innerHTML=h;
+}
+function claimOpp(){aFx(window._opp.fx);window._opp=null;clamp();updateSB();nextPhase();}
+
+// ═══════ POST-SETTLE (合併：股市 + 交易機會) ═══════
+function showPostSettle(){
+  if(!G.alive){endGame();return;}
+  // Try market then deal
+  const hasStocks=G.stocks.length>0;
+  const canBuyStock=G.cash>=Math.min(...Object.values(G.marketPrices));
+  const showMkt=hasStocks||canBuyStock;
+
+  // Roll deal
+  const a=artery();
+  const dealChance=a>60?0.80:a>=40?0.50:0.20;
+  const dealTriggered=Math.random()<dealChance;
+  let dealCard=null;
+  if(dealTriggered){
+    const pool=DEALS.filter(d=>d.type==='small'||(d.type==='big'&&a>=(d.artGate||0)));
+    if(pool.length)dealCard=pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  if(!showMkt&&!dealCard){nextPhase();return;}
+
+  let h=`<div class="phase-title">📦 季末機會</div>`;
+
+  // Market section
+  if(showMkt){
+    h+=`<div class="card"><div class="card-title">📈 股票市場</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px">本季各買賣 1 次</div>`;
+    STOCKS.forEach(s=>{
+      const price=G.marketPrices[s.id];
+      const held=G.stocks.filter(x=>x.dealCardId===s.id);
+      h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-weight:600;font-size:12px">${s.name}</div>
+          <div style="font-size:10px;color:var(--dim)">$${price}萬　持有 ${held.length}</div></div>
+        <div style="display:flex;gap:4px">
+          <button class="option-btn" style="width:auto;margin:0;padding:4px 10px;font-size:10px" onclick="buyStock('${s.id}')">買</button>
+          <button class="option-btn ${held.length?'':'locked'}" style="width:auto;margin:0;padding:4px 10px;font-size:10px" onclick="sellStock('${s.id}')">賣</button>
+        </div></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // Deal section
+  if(dealCard){
+    const canBuy=G.cash>=dealCard.cost;
+    const payback=Math.round(dealCard.cost/dealCard.cf*10)/10;
+    const tl=dealCard.type==='big'?'🏢 大型交易':'🏪 小型交易';
+    h+=`<div class="card" style="border-color:${dealCard.type==='big'?'var(--orange)':'var(--green)'}">
+      <span class="card-tag" style="background:${dealCard.type==='big'?'#7c2d12':'#14532d'};color:${dealCard.type==='big'?'#fed7aa':'#86efac'}">${tl}</span>
+      <div class="card-title">${dealCard.name}</div><div class="card-desc">${dealCard.desc}</div>
+      <div style="display:flex;gap:14px;margin:8px 0;font-size:12px">
+        <div><span style="color:var(--dim)">成本</span><br><strong>$${dealCard.cost}萬</strong></div>
+        <div><span style="color:var(--dim)">每季</span><br><strong style="color:var(--green)">+$${dealCard.cf}萬</strong></div>
+        <div><span style="color:var(--dim)">回本</span><br><strong>${payback}季</strong></div>
+      </div>
+      <button class="option-btn ${canBuy?'':'locked'}" onclick="${canBuy?`buyDealPS('${dealCard.id}',${dealCard.cost},${dealCard.cf},'${dealCard.name}','${dealCard.type}')`:'void(0)'}">
+        <span class="opt-label">買入</span>$${dealCard.cost}萬${canBuy?'':' 🔒'}</button></div>`;
+  }
+
+  h+=`<button class="btn-primary" onclick="nextPhase()">完成 → 下一季</button>`;
+  document.getElementById('content').innerHTML=h;
+  window._mktBought=false;window._mktSold=false;
+}
+
+function buyDealPS(did,cost,cf,name,type){
+  G.cash-=cost;
+  G.assets.push({id:'ast-'+Date.now(),dealCardId:did,name,type,cost,cf,acquiredAt:G.season});
+  clamp();updateSB();showPostSettle();
+}
+
+// ═══════ EXPENSE (System D) ═══════
+function tryExpense(){
+  const a=artery();
+  const ch=a>60?0.30:a>=40?0.50:0.80;
+  if(Math.random()>ch)return false;
+  G.currentExpenseCard=EXPENSES[Math.floor(Math.random()*EXPENSES.length)];
+  return true;
+}
+function showExpense(){
+  if(!G.currentExpenseCard){nextPhase();return;}
+  const c=G.currentExpenseCard;
+  const tier=c.tier==='large'?'⚡⚡⚡ 大意外':c.tier==='medium'?'⚡⚡ 中意外':'⚡ 小意外';
+  const h=`<div class="phase-title" style="color:var(--red)">💸 意外支出</div><div class="card" style="border-color:#7f1d1d">
+    <span class="card-tag tag-entropy">${tier}</span>
+    <div class="card-title">${c.name}</div><div class="card-desc">${c.desc}</div>
+    <div style="font-size:24px;font-weight:800;color:var(--red);margin:12px 0">-$${c.cost} 萬</div>
+    <button class="btn-primary" style="background:var(--red)" onclick="payExpense()">支付 $${c.cost}萬${G.cash<c.cost?' （現金不足，扣至 $0）':''}</button></div>`;
+  document.getElementById('content').innerHTML=h;
+}
+function payExpense(){
+  G.cash=Math.max(0,G.cash-G.currentExpenseCard.cost);
+  G.currentExpenseCard=null;
+  clamp();updateSB();
+  if(!G.alive){endGame();return;}
+  nextPhase();
+}
+
+// ═══════ MARKET (System C) ═══════
+function showMarket(){
+  if(G.stocks.length===0&&G.cash<Math.min(...Object.values(G.marketPrices))){nextPhase();return;}
+  let h=`<div class="phase-title">📈 股市交易</div><div class="card"><div class="card-title">股票市場</div>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:10px">本季各買賣 1 次</div>`;
+  STOCKS.forEach(s=>{
+    const price=G.marketPrices[s.id];
+    const held=G.stocks.filter(x=>x.dealCardId===s.id);
+    const canBuy=G.cash>=price&&!window._mktBought;
+    const canSell=held.length>0&&!window._mktSold;
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div><div style="font-weight:600;font-size:13px">${s.name}</div>
+        <div style="font-size:11px;color:var(--dim)">市價 $${price}萬　持有 ${held.length} 股</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="option-btn ${canBuy?'':'locked'}" style="width:auto;margin:0;padding:6px 12px;font-size:11px" onclick="buyStock('${s.id}')">買入</button>
+        <button class="option-btn ${canSell?'':'locked'}" style="width:auto;margin:0;padding:6px 12px;font-size:11px" onclick="sellStock('${s.id}')">賣出</button>
+      </div></div>`;
+  });
+  h+=`<button class="btn-primary" onclick="finishMarket()">完成交易 →</button></div>`;
+  document.getElementById('content').innerHTML=h;
+  window._mktBought=false;window._mktSold=false;
+}
+function buyStock(did){
+  if(window._mktBought)return;
+  const price=G.marketPrices[did];
+  if(G.cash<price)return;
+  G.cash-=price;
+  G.stocks.push({id:'stk-'+Date.now(),dealCardId:did,name:STOCKS.find(s=>s.id===did).name,purchasePrice:price,acquiredAt:G.season});
+  window._mktBought=true;
+  clamp();updateSB();showMarket();
+}
+function sellStock(did){
+  if(window._mktSold)return;
+  const idx=G.stocks.findIndex(s=>s.dealCardId===did);
+  if(idx<0)return;
+  G.cash+=G.marketPrices[did];
+  G.stocks.splice(idx,1);
+  window._mktSold=true;
+  clamp();updateSB();showMarket();
+}
+function finishMarket(){nextPhase();}
+
+// ═══════ DEAL (System A) ═══════
+function showDeal(){
+  const a=artery();
+  const ch=a>60?0.80:a>=40?0.50:0.20;
+  if(Math.random()>ch){nextPhase();return;}
+  const pool=DEALS.filter(d=>d.type==='small'||(d.type==='big'&&a>=(d.artGate||0)));
+  if(!pool.length){nextPhase();return;}
+  const card=pool[Math.floor(Math.random()*pool.length)];
+  const canBuy=G.cash>=card.cost&&(card.type==='small'||a>=(card.artGate||0));
+  const payback=Math.round(card.cost/card.cf*10)/10;
+  const typeLabel=card.type==='big'?'🏢 大型交易':'🏪 小型交易';
+  const h=`<div class="phase-title">🤝 交易機會</div><div class="card" style="border-color:${card.type==='big'?'var(--orange)':'var(--green)'}">
+    <span class="card-tag" style="background:${card.type==='big'?'#7c2d12':'#14532d'};color:${card.type==='big'?'#fed7aa':'#86efac'}">${typeLabel}</span>
+    <div class="card-title">${card.name}</div><div class="card-desc">${card.desc}</div>
+    <div style="display:flex;gap:16px;margin:10px 0;font-size:13px">
+      <div><span style="color:var(--dim)">成本</span><br><strong>$${card.cost}萬</strong></div>
+      <div><span style="color:var(--dim)">每季收入</span><br><strong style="color:var(--green)">+$${card.cf}萬</strong></div>
+      <div><span style="color:var(--dim)">回本</span><br><strong>${payback} 季</strong></div>
+    </div>
+    <button class="option-btn ${canBuy?'':'locked'}" onclick="${canBuy?`buyDeal('${card.id}')`:'void(0)'}">
+      <span class="opt-label">買入</span>$${card.cost}萬${canBuy?'':' 🔒 現金不足'}</button>
+    <button class="option-btn" onclick="skipDeal()"><span class="opt-label">跳過</span>不買</button></div>`;
+  document.getElementById('content').innerHTML=h;
+  window._dealCard=card;
+}
+function buyDeal(did){
+  const card=window._dealCard;
+  G.cash-=card.cost;
+  G.assets.push({id:'ast-'+Date.now(),dealCardId:did,name:card.name,type:card.type,cost:card.cost,cf:card.cf,acquiredAt:G.season});
+  clamp();updateSB();nextPhase();
+}
+function skipDeal(){nextPhase();}
+
 // ═══════ SETTLEMENT ═══════
 function doSettle(){
   const b={cash:G.cash,hb:G.hb,roots:G.roots,art:artery()};const log=[];
@@ -503,6 +802,24 @@ function doSettle(){
   const aiFx=getAIEffects(G.ai,G.aiPhase);
   if(aiFx.revMult)net+=Math.round(eR()*aiFx.revMult);
   G.cash+=net;log.push({l:'營運淨額',v:`${net>=0?'+':''}$${net}萬`});
+
+  // Step 1.5: Asset passive income
+  if(G.assets.length){
+    let totalCf=0;
+    G.assets.forEach(a=>{totalCf+=a.cf;});
+    if(totalCf>0){G.cash+=totalCf;log.push({l:'🏪 被動收入',v:`+$${totalCf}萬（${G.assets.length} 項資產）`});}
+  }
+
+  // Step 1.7: Market price fluctuation
+  STOCKS.forEach(s=>{
+    let change=0;
+    const range=s.vol==='high'?{min:-0.20,max:0.25}:{min:-0.08,max:0.12};
+    change=range.min+Math.random()*(range.max-range.min);
+    if(G.roots>60)change+=0.05;if(G.roots<30)change-=0.10;
+    if(G.hb>70&&s.id==='deal-x1')change+=0.08;
+    const old=G.marketPrices[s.id];
+    G.marketPrices[s.id]=Math.max(5,Math.min(500,Math.floor(old*(1+change))));
+  });
 
   // AI lifeline effects
   if(aiFx.roots)G.roots+=aiFx.roots;
@@ -546,7 +863,19 @@ function doSettle(){
 
   clamp();const a={cash:G.cash,hb:G.hb,roots:G.roots,art:artery()};
 
-  let h=`<div class="phase-title">📊 ${sL()} 結算</div><div class="card">`;
+  // Mood sentence
+  const artD=a.art-b.art,hbD=a.hb-b.hb,rtD=a.roots-b.roots;
+  const totalD=artD+hbD+rtD;
+  let mood,moodClass;
+  if(G.hb<35||G.roots<25||artery()<30){mood='⚠️ 死亡螺旋啟動中...';moodClass='mood-danger';}
+  else if(G.hb>65&&G.roots>65){mood='🚀 飛輪全速運轉！';moodClass='mood-great';}
+  else if(totalD>10){mood='📈 穩健成長的一季';moodClass='mood-good';}
+  else if(totalD>-5){mood='➡️ 平穩度過';moodClass='mood-good';}
+  else if(totalD>-15){mood='📉 有壓力的一季';moodClass='mood-warn';}
+  else{mood='🔥 危險的一季';moodClass='mood-danger';}
+
+  let h=`<div class="phase-title">📊 ${sL()} 結算</div><div class="card">
+    <div class="settle-mood ${moodClass}">${mood}</div>`;
   [{l:'現金動脈',b:b.art,a:a.art,u:'%'},{l:'組織心跳',b:b.hb,a:a.hb,u:''},{l:'客戶根系',b:b.roots,a:a.roots,u:''},{l:'可用現金',b:b.cash,a:a.cash,u:'萬'}].forEach(m=>{
     const d=Math.round((m.a-m.b)*10)/10;const cls=d>0?'delta-pos':d<0?'delta-neg':'';
     const fmt=v=>m.u==='%'?Math.round(v)+'%':m.u==='萬'?'$'+Math.round(v)+'萬':Math.round(v);
@@ -561,8 +890,7 @@ function doSettle(){
 
 // ═══════ END GAME + LEGACY ═══════
 function endGame(){
-  let score=0;const grade=calcGrade();
-  if(G.alive)score=Math.round(artery()*1.5+G.hb*1.5+G.roots*1.5+50+G.completedProjects.length*30);
+  const score=calcScore();const grade=calcGrade();
   const gc={S:'var(--purple)',A:'var(--green)',B:'var(--yellow)',C:'var(--orange)',D:'var(--red)',F:'var(--red)'}[grade];
 
   // Legacy trait selection
@@ -594,9 +922,13 @@ function endGame(){
   window._legacyMax=maxPick;window._legacySel=[];
 }
 
+function calcScore(){
+  if(!G.alive)return 0;
+  return Math.round(artery()*1.5+G.hb*1.5+G.roots*1.5+50+G.completedProjects.length*30+Math.min(30,calcNW()/20));
+}
 function calcGrade(){
   if(!G.alive)return G.season>=18?'D':'F';
-  const s=Math.round(artery()*1.5+G.hb*1.5+G.roots*1.5+50+G.completedProjects.length*30);
+  const s=calcScore();
   return s>=400?'S':s>=300?'A':s>=200?'B':s>=100?'C':'D';
 }
 
@@ -645,8 +977,138 @@ function updateSB(){
   if(G.foreshadows.length)sh+=`<div class="sb-fs"><span class="fs-dot"></span>${G.foreshadows.length} 伏筆潛伏</div>`;
   if(G.activeProject){const p=G.activeProject;sh+=`<div class="sb-proj"><div class="pn">🔶 ${p.name}</div><div class="pd">進度 ${p.progress}/4${p.stalled?' ⚠️':''}${p.boosted?' ⏫':''}</div></div>`;}
   G.completedProjects.forEach(pid=>{const p=PROJ.find(x=>x.id===pid);if(p)sh+=`<div class="sb-proj" style="border-color:var(--green);opacity:.6"><div class="pn">✅ ${p.name}</div></div>`;});
+  // Assets
+  if(G.assets.length){
+    const totalCf=G.assets.reduce((s,a)=>s+a.cf,0);
+    sh+=`<div style="font-size:10px;color:var(--green);padding:4px 0;margin-top:4px">📦 資產 ${G.assets.length} 項　+$${totalCf}萬/季</div>`;
+    G.assets.forEach(a=>sh+=`<div style="font-size:9px;color:var(--dim);padding:1px 0;padding-left:12px">🏪 ${a.name} +$${a.cf}萬</div>`);
+  }
+  // Stocks
+  if(G.stocks.length){
+    const totalVal=G.stocks.reduce((s,st)=>s+G.marketPrices[st.dealCardId],0);
+    sh+=`<div style="font-size:10px;color:var(--blue);padding:4px 0;margin-top:4px">📈 持股 ${G.stocks.length} 股　市值 $${totalVal}萬</div>`;
+  }
+  // Net worth button
+  const nw=calcNW();
+  sh+=`<button class="nw-btn" onclick="showDashboard()"><span>💎 淨資產</span><span class="nw-val">$${nw}萬</span><span style="font-size:9px;color:var(--dim)">📊</span></button>`;
   if(G.traits.length)G.traits.forEach(tid=>{const t=TRAITS.find(x=>x.id===tid);if(t)sh+=`<div style="font-size:10px;color:var(--purple);padding:2px 0">🧬 ${t.name}</div>`;});
   document.getElementById('sb-status').innerHTML=sh||'<div style="font-size:11px;color:var(--dim)">—</div>';
+}
+
+// ═══════ DASHBOARD MODAL ═══════
+function showDashboard(){
+  const hist=G.history;
+  if(!hist.length)return;
+
+  // SVG chart
+  const w=520,h=160,pad=30;
+  const maxS=hist.length;
+  const xStep=(w-pad*2)/(Math.max(1,maxS-1));
+
+  function makeLine(data,key,color){
+    const vals=data.map(d=>d[key]);
+    const max=Math.max(...vals,1);const min=Math.min(...vals,0);
+    const range=max-min||1;
+    let path='';
+    vals.forEach((v,i)=>{
+      const x=pad+i*xStep;
+      const y=h-pad-((v-min)/range)*(h-pad*2);
+      path+=(i===0?'M':'L')+`${x.toFixed(1)},${y.toFixed(1)} `;
+    });
+    return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>`;
+  }
+
+  // X axis labels
+  let xLabels='';
+  hist.forEach((d,i)=>{
+    if(i%4===0){
+      const x=pad+i*xStep;
+      xLabels+=`<text x="${x}" y="${h-8}" fill="#64748b" font-size="9" text-anchor="middle">Y${Math.floor(d.s/4)+1}</text>`;
+    }
+  });
+
+  const svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto">
+    <rect x="${pad}" y="10" width="${w-pad*2}" height="${h-pad-10}" fill="#0f172a" rx="4"/>
+    ${makeLine(hist,'cash','#06b6d4')}
+    ${makeLine(hist,'hb','#22c55e')}
+    ${makeLine(hist,'roots','#eab308')}
+    ${makeLine(hist,'nw','#a855f7')}
+    ${xLabels}
+    <text x="${w-pad}" y="24" fill="#06b6d4" font-size="9" text-anchor="end">現金</text>
+    <text x="${w-pad}" y="36" fill="#22c55e" font-size="9" text-anchor="end">心跳</text>
+    <text x="${w-pad}" y="48" fill="#eab308" font-size="9" text-anchor="end">根系</text>
+    <text x="${w-pad}" y="60" fill="#a855f7" font-size="9" text-anchor="end">淨資產</text>
+  </svg>`;
+
+  // Revenue breakdown
+  const passiveInc=G.assets.reduce((s,a)=>s+a.cf,0);
+  const stockVal=G.stocks.reduce((s,st)=>s+G.marketPrices[st.dealCardId],0);
+
+  let modal=`<div class="modal-overlay" id="dashboard-modal" onclick="if(event.target===this)closeDash()">
+    <div class="modal">
+      <div class="modal-title"><span>📊 財務儀表板</span><button class="modal-close" onclick="closeDash()">✕</button></div>
+
+      <div class="chart-wrap">
+        <div class="chart-label">歷史趨勢（${hist.length} 季）</div>
+        ${svg}
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-box"><div class="dl">可用現金</div><div class="dv">$${Math.round(G.cash)}萬</div></div>
+        <div class="detail-box"><div class="dl">淨資產</div><div class="dv" style="color:var(--accent)">$${calcNW()}萬</div></div>
+        <div class="detail-box"><div class="dl">季營收</div><div class="dv">$${eR()}萬</div></div>
+        <div class="detail-box"><div class="dl">季支出</div><div class="dv">$${eE()}萬</div></div>
+        <div class="detail-box"><div class="dl">被動收入</div><div class="dv" style="color:var(--green)">${passiveInc?'+$'+passiveInc+'萬/季':'—'}</div></div>
+        <div class="detail-box"><div class="dl">季淨額</div><div class="dv">${eR()-eE()+passiveInc>=0?'+':''}$${eR()-eE()+passiveInc}萬</div></div>
+      </div>`;
+
+  // Assets
+  if(G.assets.length){
+    modal+=`<div class="chart-wrap"><div class="chart-label">持有資產（${G.assets.length} 項）</div>`;
+    G.assets.forEach(a=>{
+      const held=G.season-a.acquiredAt;
+      const earned=a.cf*held;
+      modal+=`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid var(--border)">
+        <span>🏪 ${a.name}</span><span style="color:var(--dim)">成本$${a.cost}萬　+$${a.cf}萬/季　已賺$${earned}萬</span></div>`;
+    });
+    modal+=`</div>`;
+  }
+
+  // Stocks
+  if(G.stocks.length){
+    modal+=`<div class="chart-wrap"><div class="chart-label">持股（${G.stocks.length} 股）</div>`;
+    G.stocks.forEach(st=>{
+      const cur=G.marketPrices[st.dealCardId];
+      const pnl=cur-st.purchasePrice;
+      const pnlPct=Math.round(pnl/st.purchasePrice*100);
+      const pnlCls=pnl>=0?'delta-pos':'delta-neg';
+      modal+=`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;border-bottom:1px solid var(--border)">
+        <span>📈 ${st.name}</span><span>買$${st.purchasePrice}萬 → $${cur}萬 <span class="${pnlCls}">(${pnl>=0?'+':''}${pnlPct}%)</span></span></div>`;
+    });
+    modal+=`</div>`;
+  }
+
+  // Foreshadows
+  if(G.foreshadows.length){
+    modal+=`<div class="chart-wrap"><div class="chart-label">潛伏中的伏筆（${G.foreshadows.length} 個）</div>`;
+    G.foreshadows.forEach(fs=>{
+      const remaining=fs.trigger-G.season;
+      modal+=`<div style="font-size:11px;padding:3px 0;color:var(--purple)"><span class="fs-dot"></span> ${fs.n}（約 ${remaining} 季後觸發）</div>`;
+    });
+    modal+=`</div>`;
+  }
+
+  modal+=`</div></div>`;
+
+  // Inject modal
+  let el=document.getElementById('dashboard-modal');
+  if(el)el.remove();
+  document.body.insertAdjacentHTML('beforeend',modal);
+}
+
+function closeDash(){
+  const el=document.getElementById('dashboard-modal');
+  if(el)el.remove();
 }
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mob-overlay').classList.toggle('show');}
