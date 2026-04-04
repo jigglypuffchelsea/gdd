@@ -156,6 +156,10 @@ border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13
 <h1>熵與奮鬥者</h1>
 <p>一個讓你在 20 個季度內，親身經歷公司從創立到第五年的所有關鍵轉折。<br>遊戲不教你答案。遊戲讓你親身見證自己決策的終點。</p>
 <div id="legacy-display"></div>
+<div style="margin-bottom:16px">
+  <button onclick="importLegacy()" style="background:none;border:1px solid var(--border);color:var(--dim);padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;margin:0 4px">📥 匯入傳承碼</button>
+  <button onclick="clearLegacy()" style="background:none;border:1px solid var(--border);color:var(--dim);padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;margin:0 4px">🗑️ 清除傳承</button>
+</div>
 <div class="mode-grid">
 <button class="mode-btn" onclick="startGame('normal')"><h3>🏢 正常模式</h3><p>20 季　1 AI 對手<br>適合初次經營</p></button>
 <button class="mode-btn" onclick="startGame('challenge')"><h3>🔥 挑戰模式</h3><p>24 季　2 AI 對手<br>極端場景、隱藏牌組</p></button>
@@ -250,6 +254,26 @@ opts:[{l:'A',t:'接受漲價 + 開發備援',fx:{cash:-80},fs:{n:'雙供應商',
 {id:18,title:'即時激勵缺失',year:[2,4],desc:'超額完成率從 40% 降到 12%。沒人投訴，但也沒人衝刺。',
 opts:[{l:'A',t:'導入即時激勵方案',fx:{cash:-80,hb:2},fs:{n:'激勵見效',d:3,fx:{hb:10,roots:5,cash:-40}},gate:{artery:45}},{l:'B',t:'再觀察一季',fx:{hb:-5,roots:-3}}]}
 ];
+
+// Cascade sub-cards (級聯子牌)
+const CASCADE={
+  3:{// #003 年度目標拉鋸
+    A:{id:301,title:'目標降了，降多少？',desc:'你決定降目標了。業務主管問：「降 20% 還是降 10%？」',tag:'cascade',
+      opts:[{l:'A1',t:'降 20%（原方案）',fx:{},note:'維持原伏筆不變'},
+        {l:'A2',t:'只降 10%（折衷）',fx:{hb:-2,roots:1},modFs:{hb:-4,roots:-3}}]},
+    B:{id:302,title:'增量算法怎麼設計？',desc:'獎金池準備好了。HR 問你：超額獎金怎麼算？',tag:'cascade',
+      opts:[{l:'B1',t:'線性提成（簡單好懂）',fx:{hb:3},modFs:{hb:8,roots:3}},
+        {l:'B2',t:'階梯加速（超額越多比例越高）',fx:{hb:-1},modFs:{hb:12,roots:8,cash:-60}}]}
+  },
+  11:{// #013(id:11) 合夥人攤牌
+    A:{id:303,title:'線上業務怎麼做？',desc:'合夥人重新振作了。$300 萬怎麼花？',tag:'cascade',
+      opts:[{l:'A1',t:'自建平台（全部自己開發）',fx:{hb:3},modFs:{cash:100},modChance:70},
+        {l:'A2',t:'找現有平台合作',fx:{cash:80,hb:-2},modFs:{cash:60},modChance:50}]},
+    B:{id:304,title:'合夥人走了，技術怎麼辦？',desc:'合夥人上週正式離職了。他負責的技術架構只有他一個人懂。',tag:'cascade',
+      opts:[{l:'B1',t:'高薪外聘 CTO',fx:{cash:-80,hb:4},modFs:{hb:10,roots:7},permExp:25},
+        {l:'B2',t:'從內部拔擢',fx:{cash:-20,hb:6},fs:{n:'內部培養',d:3,fx:{hb:5},rnd:{fail:{roots:-8,hb:-5},ch:30}}}]}
+  }
+};
 
 // Hidden decision cards (Challenge mode)
 const HIDDEN_DC=[
@@ -377,9 +401,19 @@ const PROJ=[
 {id:'supply',name:'供應鏈優化',minY:2,gt:'artery',gv:45,mg:35,cost:70,mnt:15,rw:{expDelta:-15,cash:40},brw:{expDelta:-20,cash:60},fs:{n:'供應脆弱',d:3,fx:{}}}
 ];
 
-// AI TYPES
+// AI TYPES — with personality
 const AI_TYPES=['猛虎','老狐','狼群'];
-const AI_DESC={猛虎:'激進擴張，搶客戶',老狐:'保守蟄伏，趁虛而入',狼群:'重金砸人才，挖角'};
+const AI_PROFILE={
+  猛虎:{name:'猛虎資本',icon:'🐯',desc:'激進擴張，搶客戶',
+    intel:{1:'猛虎資本正在大舉擴張，你的客戶開始被接觸。',2:'猛虎資本的擴張速度驚人，市場價格被壓低。',
+      3:'猛虎資本的資金鏈開始吃緊⋯⋯',4:'猛虎資本似乎撐不住了。',5:'猛虎資本的結局即將揭曉。',crash:'猛虎資本資金鏈斷裂！他們的客戶正在找新供應商。',survive:'猛虎資本活下來了，壓力持續。'}},
+  老狐:{name:'老狐集團',icon:'🦊',desc:'保守蟄伏，趁虛而入',
+    intel:{1:'老狐集團似乎在觀望，沒什麼動作。',2:'老狐集團悄悄簽下了一個高端客戶。',
+      3:'老狐集團在囤積現金，等待時機。',4:'老狐集團開始出手了——專門挑弱勢的對手下手。',5:'老狐集團正在評估收購目標。'}},
+  狼群:{name:'狼群科技',icon:'🐺',desc:'重金砸人才，挖角',
+    intel:{1:'狼群科技開出高薪在市場上搶人。',2:'你的團隊有人收到狼群科技的邀約。',
+      3:'狼群科技的人才攻勢加劇，薪資成本飆升。',4:'狼群科技的高薪策略開始反噬他們自己。',5:'狼群科技的人事成本可能撐不住了。',crash:'狼群科技裁員了！人才開始回流市場。',survive:'狼群科技依然強勢，挖角壓力持續。'}}
+};
 
 // LEGACY TRAITS
 const TRAITS=[
@@ -483,8 +517,8 @@ function showAIEvent(){
 
 // ═══════ RENDER HELPERS ═══════
 function renderCard(card,type){
-  const tagClass=type==='ai'?'tag-ai':type==='hidden'?'tag-hidden':'tag-decision';
-  const tagText=type==='ai'?'AI 事件':type==='hidden'?'極端場景':card.opts?.length>2?'三路選擇':'決策';
+  const tagClass=type==='cascade'?'tag-ai':type==='ai'?'tag-ai':type==='hidden'?'tag-hidden':'tag-decision';
+  const tagText=type==='cascade'?'🔗 級聯決策':type==='ai'?'AI 事件':type==='hidden'?'極端場景':card.opts?.length>2?'三路選擇':'決策';
   let h=`<div class="phase-title">${type==='ai'?'🤖 AI 事件':'📋 決策牌'}</div><div class="card">
     <span class="card-tag ${tagClass}">${tagText}</span>
     <div class="card-title">${card.title}</div><div class="card-desc">${card.desc}</div>`;
@@ -511,10 +545,22 @@ function pickDec(cid,oi){
   if(opt.sp==='cutRev')G.revDelta-=25;
   if(opt.sp==='restruct')G.expDelta-=30;
   if(opt.sp==='ipo')G.expDelta+=60;
+  if(opt.permExp)G.expDelta+=opt.permExp;
   if(opt.sp==='sellout'){G.alive=true;G.season=G.maxSeasons-1;endGame();return;}
+  // Cascade: modify parent foreshadow if modFs exists
+  if(opt.modFs&&window._cascadeCtx){
+    const parentFs=G.foreshadows.find(f=>f.parentId===window._cascadeCtx.parentId);
+    if(parentFs){parentFs.fx={...opt.modFs};}
+    window._cascadeCtx=null;
+  }
   if(opt.fs){
     G.foreshadows.push({n:opt.fs.n,trigger:G.season+opt.fs.d,fx:{...opt.fs.fx},rnd:opt.fs.rnd,cond:opt.fs.cond,
-      src:`${sL()} 「${card.title}」選了 ${opt.l}：${opt.t}`});
+      src:`${sL()} 「${card.title}」選了 ${opt.l}：${opt.t}`,parentId:cid,parentOpt:opt.l});
+  }
+  // Cascade: queue sub-card for next decision season
+  if(CASCADE[cid]){
+    const branch=opt.l.startsWith('A')?'A':'B';
+    if(CASCADE[cid][branch])G._pendingCascade={parentId:cid,branch,parentFsIdx:G.foreshadows.length-1};
   }
   clamp();updateSB();nextPhase();
 }
@@ -528,6 +574,15 @@ function showInvest(){
     {name:'客戶回饋',cost:50,fx:{roots:5},desc:'根系 +5',tp:'cl'},
     {name:'客戶深耕',cost:80,fx:{roots:4},desc:'根系+4，+3/季×4季',tp:'cl',sus:{roots:3,s:4}}
   ];
+  // Y3+ unlock competitive investments
+  if(yr()>=3){
+    items.push({name:'🆕 市場拓展',cost:120,fx:{roots:6},desc:'根系+6，+2/季×3季',tp:'cl',sus:{roots:2,s:3},unlockY:3});
+    items.push({name:'🆕 技術研發',cost:150,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',unlockY:3,permExp:-5});
+  }
+  // Y5+ unlock legacy investment
+  if(yr()>=5){
+    items.push({name:'🆕 企業傳承規劃',cost:100,fx:{hb:10,roots:-3},desc:'心跳+10 根系-3（交接期陣痛）',tp:'hb',unlockY:5});
+  }
   const pj=getAvailProj();
   let h=`<div class="phase-title">💰 投資階段　<span style="font-size:11px;color:var(--dim);font-weight:400">可投 ${mx} 項</span></div>`;
   // Inline expense notification
@@ -573,7 +628,7 @@ function showInvest(){
   window._inv=items;window._sel=[];window._mx=mx;
 }
 function tInv(el,i){const s=window._sel;const x=s.indexOf(i);if(x>=0){s.splice(x,1);el.classList.remove('selected');}else if(s.length<window._mx){s.push(i);el.classList.add('selected');}}
-function cInv(){(window._sel||[]).forEach(i=>{const o=window._inv[i];G.cash-=o.cost;aFx(o.fx);if(o.sus)G.investEffects.push({...o.sus,r:o.sus.s});});clamp();updateSB();nextPhase();}
+function cInv(){(window._sel||[]).forEach(i=>{const o=window._inv[i];G.cash-=o.cost;aFx(o.fx);if(o.sus)G.investEffects.push({...o.sus,r:o.sus.s});if(o.permExp)G.expDelta+=o.permExp;});clamp();updateSB();nextPhase();}
 function getAvailProj(){if(G.activeProject)return[];return PROJ.filter(p=>yr()>=p.minY&&!G.completedProjects.includes(p.id)&&getM(p.gt)>p.gv).slice(0,2);}
 function getM(t){return t==='roots'?G.roots:t==='hb'?G.hb:artery();}
 function mL(t){return t==='roots'?'根系':t==='hb'?'心跳':'動脈';}
@@ -602,6 +657,18 @@ function rEnt(ch){const c=window._ec;aFx(ch==='e'?c.e:c.m);if(c.sp==='law'&&ch==
 
 // ═══════ DECISION ═══════
 function showDec(){
+  // Check for pending cascade sub-card
+  if(G._pendingCascade){
+    const pc=G._pendingCascade;
+    const subCard=CASCADE[pc.parentId]?.[pc.branch];
+    if(subCard){
+      G._pendingCascade=null;
+      window._cascadeCtx=pc;
+      renderCard(subCard,'cascade');
+      return;
+    }
+    G._pendingCascade=null;
+  }
   const y=yr();let pool=DC.filter(c=>y>=c.year[0]&&y<=c.year[1]&&!usedD.includes(c.id));
   if(G.mode==='challenge')pool=[...pool,...HIDDEN_DC.filter(c=>y>=c.year[0]&&y<=c.year[1]&&!usedD.includes(c.id))];
   if(!pool.length){usedD=[];pool=DC.filter(c=>y>=c.year[0]&&y<=c.year[1]);}
@@ -1042,6 +1109,24 @@ function pickTrait(el,tid){
 function saveLegacy(max){
   const sel=window._legacySel;if(sel.length>max)return;
   localStorage.setItem('entropy_traits',JSON.stringify(sel));
+  // Generate legacy code
+  const code=btoa(JSON.stringify(sel)).replace(/=/g,'');
+  alert(`傳承碼已保存！\n\n你的傳承碼：${code}\n\n（可在其他裝置的開始畫面匯入）`);
+  location.reload();
+}
+function importLegacy(){
+  const code=prompt('請輸入傳承碼：');
+  if(!code)return;
+  try{
+    const padded=code+'='.repeat((4-code.length%4)%4);
+    const traits=JSON.parse(atob(padded));
+    if(!Array.isArray(traits))throw 0;
+    localStorage.setItem('entropy_traits',JSON.stringify(traits));
+    location.reload();
+  }catch(e){alert('傳承碼無效，請確認後重試。');}
+}
+function clearLegacy(){
+  localStorage.removeItem('entropy_traits');
   location.reload();
 }
 
@@ -1062,15 +1147,24 @@ function updateSB(){
   const rb=document.getElementById('sb-rb');rb.style.width=G.roots+'%';rb.style.background=zc(G.roots);
   document.getElementById('sb-rz').textContent=`${ze(G.roots)} ${rd(G.roots)}`;
 
-  // Market
+  // Market — AI personality
   let mk='';
-  if(G.ai){
-    const fx=getAIEffects(G.ai,G.aiPhase);
+  [G.ai,G.ai2].forEach(ai=>{
+    if(!ai)return;
+    const p=AI_PROFILE[ai];
+    const fx=getAIEffects(ai,ai===G.ai?G.aiPhase:G.ai2Phase);
     const intensity=Math.abs(fx.rootsDecay||0)+Math.abs(fx.hbDecay||0)+Math.abs(fx.revMult||0)*10;
     const level=intensity>=3?'高':intensity>=1?'中':'低';
-    mk+=`<div class="sb-market"><div class="mk-name">${G.ai}型對手</div><div class="mk-detail">${AI_DESC[G.ai]}　壓力：${level}</div></div>`;
-  }
-  if(G.ai2){mk+=`<div class="sb-market"><div class="mk-name">${G.ai2}型對手</div><div class="mk-detail">${AI_DESC[G.ai2]}</div></div>`;}
+    const y=yr();
+    const ph=ai===G.ai?G.aiPhase:G.ai2Phase;
+    let intel=p.intel[y]||p.intel[5]||'';
+    if(ph.crashed&&y>=3)intel=p.intel.crash||intel;
+    if(ph.crashed5)intel=p.intel.crash||intel;
+    if(ph.resolved&&!ph.crashed&&y>=4)intel=p.intel.survive||intel;
+    mk+=`<div class="sb-market"><div class="mk-name">${p.icon} ${p.name}</div>
+      <div class="mk-detail">${p.desc}　壓力：${level}</div>
+      <div style="font-size:9px;color:var(--dim);margin-top:3px;font-style:italic">${intel}</div></div>`;
+  });
   document.getElementById('sb-mkt').innerHTML=mk;
 
   // Status
