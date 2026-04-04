@@ -130,6 +130,23 @@ border:1px solid var(--border);background:#0f172a;color:var(--text);font-size:13
 .nw-btn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:11px;margin-top:6px;transition:all .15s}
 .nw-btn:hover{border-color:var(--accent)}
 .nw-btn .nw-val{font-size:14px;font-weight:700;color:var(--accent)}
+
+/* Review system */
+.review-section{margin-top:20px;text-align:left}
+.review-title{font-size:14px;font-weight:700;margin-bottom:12px;color:var(--accent)}
+.timeline-item{padding:10px 12px;border-left:3px solid var(--border);margin-bottom:8px;font-size:12px;background:var(--card);border-radius:0 8px 8px 0}
+.timeline-item.positive{border-left-color:var(--green)}
+.timeline-item.negative{border-left-color:var(--red)}
+.timeline-item.neutral{border-left-color:var(--yellow)}
+.tl-season{font-size:10px;color:var(--dim)}
+.tl-title{font-weight:700;margin:2px 0}
+.tl-choice{color:var(--accent);font-size:11px}
+.tl-result{font-size:11px;color:var(--dim);margin-top:3px}
+.tl-alt{font-size:10px;color:var(--purple);margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
+.knowledge-box{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px}
+.knowledge-box .kb-title{font-weight:700;color:var(--accent);margin-bottom:4px}
+.knowledge-box .kb-lesson{color:var(--dim);line-height:1.5}
+.review-chart{background:var(--card);border-radius:8px;padding:16px;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -486,13 +503,19 @@ function pickDec(cid,oi){
   usedD.push(cid);
   const card=window._curCard||DC.find(c=>c.id===cid)||HIDDEN_DC.find(c=>c.id===cid)||AI_DC.find(c=>c.id===cid);
   const opt=card.opts[oi];
+  // Record decision for review
+  G.decisions.push({season:G.season,label:sL(),title:card.title,chosen:opt.l,chosenText:opt.t,chosenFx:{...opt.fx},
+    allOpts:card.opts.map(o=>({l:o.l,t:o.t,fx:{...o.fx}})),hasForeshadow:!!opt.fs,fsName:opt.fs?.n||''});
   aFx(opt.fx);
   if(opt.sp==='cutExp')G.expDelta-=35;
   if(opt.sp==='cutRev')G.revDelta-=25;
   if(opt.sp==='restruct')G.expDelta-=30;
   if(opt.sp==='ipo')G.expDelta+=60;
   if(opt.sp==='sellout'){G.alive=true;G.season=G.maxSeasons-1;endGame();return;}
-  if(opt.fs)G.foreshadows.push({n:opt.fs.n,trigger:G.season+opt.fs.d,fx:{...opt.fs.fx},rnd:opt.fs.rnd,cond:opt.fs.cond});
+  if(opt.fs){
+    G.foreshadows.push({n:opt.fs.n,trigger:G.season+opt.fs.d,fx:{...opt.fs.fx},rnd:opt.fs.rnd,cond:opt.fs.cond,
+      src:`${sL()} 「${card.title}」選了 ${opt.l}：${opt.t}`});
+  }
   clamp();updateSB();nextPhase();
 }
 
@@ -839,8 +862,12 @@ function doSettle(){
   }
   if(G.projectCooldown>0)G.projectCooldown--;
 
-  // Foreshadows
-  G.foreshadows=G.foreshadows.filter(fs=>{if(G.season>=fs.trigger){let fx={...fs.fx};if(fs.cond){const met=fs.cond==='hb<55'?G.hb<55:false;if(!met){log.push({l:`伏筆：${fs.n}`,v:'條件未達'});return false;}}if(fs.rnd&&Math.random()*100<fs.rnd.ch)fx=fs.rnd.fail;aFx(fx);log.push({l:`伏筆：${fs.n}`,v:fT(fx)});return false;}return true;});
+  // Foreshadows (with source attribution)
+  G.foreshadows=G.foreshadows.filter(fs=>{if(G.season>=fs.trigger){let fx={...fs.fx};
+    const srcTag=fs.src?`<div style="font-size:10px;color:var(--purple);margin-top:2px">← ${fs.src}</div>`:'';
+    if(fs.cond){const met=fs.cond==='hb<55'?G.hb<55:false;if(!met){log.push({l:`伏筆：${fs.n}`,v:'條件未達'+srcTag});return false;}}
+    if(fs.rnd&&Math.random()*100<fs.rnd.ch)fx=fs.rnd.fail;
+    aFx(fx);log.push({l:`伏筆：${fs.n}`,v:fT(fx)+srcTag});return false;}return true;});
 
   // Flywheel
   if(G.hb>65){G.roots+=2;log.push({l:'飛輪',v:'心跳→根系+2'});}
@@ -898,16 +925,88 @@ function endGame(){
   const avail=TRAITS.filter(t=>t.cond(gData));
   const maxPick=grade==='S'?2:grade==='A'?2:grade==='B'?1:grade==='C'?1:0;
 
-  let h=`<div id="game-over"><h1>${G.alive?'經營終了':'公司倒閉'}</h1>
+  // Final history snapshot
+  G.history.push({s:G.season,cash:Math.round(G.cash),hb:G.hb,roots:G.roots,art:Math.round(artery()),nw:calcNW()});
+
+  let h=`<div id="game-over"><h1>${G.alive?'五年經營終了':'公司倒閉'}</h1>
     <p style="color:var(--dim)">${G.alive?`走過 ${G.season+1} 季`:`${sL()} 資金斷裂`}　AI對手：${G.ai}${G.ai2?' + '+G.ai2:''}</p>
     <div class="go-score">${score}</div><div class="go-grade" style="color:${gc}">${grade} 級</div>
     <div class="stat-grid">
       <div class="stat-box"><div class="label">現金動脈</div><div class="val">${Math.round(artery())}% ${ze(artery())}</div></div>
       <div class="stat-box"><div class="label">組織心跳</div><div class="val">${G.hb} ${ze(G.hb)}</div></div>
       <div class="stat-box"><div class="label">客戶根系</div><div class="val">${G.roots} ${ze(G.roots)}</div></div>
-      <div class="stat-box"><div class="label">完成計畫</div><div class="val">${G.completedProjects.length} 個</div></div>
+      <div class="stat-box"><div class="label">淨資產</div><div class="val">$${calcNW()}萬</div></div>
     </div>`;
 
+  // ═══════ REVIEW SYSTEM (覆盤) ═══════
+  h+=`<div class="review-section">
+    <div class="review-title">📖 經營覆盤</div>`;
+
+  // 1. Lifeline chart
+  if(G.history.length>1){
+    const hist=G.history;
+    const w=520,ht=140,pad=28;
+    const xS=(w-pad*2)/Math.max(1,hist.length-1);
+    function mkL(data,key,color,max){
+      const vals=data.map(d=>d[key]);
+      const mx=max||Math.max(...vals,1);const mn=0;
+      let p='';vals.forEach((v,i)=>{const x=pad+i*xS;const y=ht-pad-((v-mn)/(mx-mn||1))*(ht-pad*2);p+=(i===0?'M':'L')+`${x.toFixed(1)},${y.toFixed(1)} `;});
+      return `<path d="${p}" fill="none" stroke="${color}" stroke-width="1.5" opacity=".8"/>`;
+    }
+    let xLbls='';hist.forEach((d,i)=>{if(i%4===0){xLbls+=`<text x="${pad+i*xS}" y="${ht-6}" fill="#64748b" font-size="8" text-anchor="middle">Y${Math.floor(d.s/4)+1}</text>`;}});
+    const svg=`<svg viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto">
+      <rect x="${pad}" y="8" width="${w-pad*2}" height="${ht-pad-8}" fill="#0f172a" rx="4"/>
+      ${mkL(hist,'art','#06b6d4',100)}${mkL(hist,'hb','#22c55e',100)}${mkL(hist,'roots','#eab308',100)}
+      ${xLbls}
+      <text x="${w-pad}" y="20" fill="#06b6d4" font-size="8" text-anchor="end">動脈</text>
+      <text x="${w-pad}" y="30" fill="#22c55e" font-size="8" text-anchor="end">心跳</text>
+      <text x="${w-pad}" y="40" fill="#eab308" font-size="8" text-anchor="end">根系</text>
+    </svg>`;
+    h+=`<div class="review-chart"><div style="font-size:10px;color:var(--dim);margin-bottom:6px">命脈歷史趨勢</div>${svg}</div>`;
+  }
+
+  // 2. Decision timeline
+  if(G.decisions.length){
+    h+=`<div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--accent)">決策時間軸</div>`;
+    G.decisions.forEach(d=>{
+      const net=(d.chosenFx.cash||0)+(d.chosenFx.hb||0)+(d.chosenFx.roots||0);
+      const cls=net>0?'positive':net<-5?'negative':'neutral';
+      h+=`<div class="timeline-item ${cls}">
+        <div class="tl-season">${d.label}</div>
+        <div class="tl-title">${d.title}</div>
+        <div class="tl-choice">選了 ${d.chosen}：${d.chosenText}</div>
+        <div class="tl-result">即時效果：${fT(d.chosenFx)}${d.hasForeshadow?' ⏳ 伏筆：'+d.fsName:''}</div>`;
+      // Show alternatives
+      const alts=d.allOpts.filter(o=>o.l!==d.chosen);
+      if(alts.length){
+        h+=`<div class="tl-alt">另一條路：`;
+        alts.forEach(a=>{h+=`<span style="margin-right:8px">${a.l}「${a.t}」→ ${fT(a.fx)}</span>`;});
+        h+=`</div>`;
+      }
+      h+=`</div>`;
+    });
+  }
+
+  // 3. Knowledge insights
+  h+=`<div style="font-size:12px;font-weight:700;margin:16px 0 8px;color:var(--accent)">💡 本局洞察</div>`;
+  const insights=[];
+  if(G.decisions.some(d=>d.title==='明星員工求去'))insights.push({t:'留人 vs 建梯隊',l:'個別加薪解決眼前，虛擬股權綁定未來，放手建梯隊則打造不依賴個人的組織。最佳答案取決於你在哪個階段。'});
+  if(G.decisions.some(d=>d.title==='股權激勵要求'))insights.push({t:'股權不是獎勵過去',l:'實股容易把奮鬥者變成食利者。動態股權保持了激勵與貢獻的掛鉤。口頭承諾是最貴的選項——拖延不是決策，是最差的決策。'});
+  if(G.decisions.some(d=>d.title==='年度目標拉鋸'))insights.push({t:'目標不是用來完成的',l:'降目標看似善待團隊，但目標是用來激發增量的工具。降了就回不去——團隊養成「目標可以談判」的習慣。'});
+  if(G.decisions.some(d=>d.title==='跨界競爭者進入'))insights.push({t:'面對低價競爭',l:'降價是最差的策略——你永遠比不上燒錢的人便宜。深耕壁壘短期痛但長期贏。聯盟的前提是你有不可替代的價值。'});
+  if(G.decisions.some(d=>d.title==='數據安全事件'))insights.push({t:'危機處理的差異',l:'全面透明看起來最貴，但信任反彈的回報遠超成本。低調處理是假省錢——延遲後果的懲罰是即時支出的數倍。合規是底線，不是策略。'});
+  if(G.decisions.some(d=>d.title==='內部創業提案'))insights.push({t:'半投入比不投入更浪費',l:'給一半資源做不出結果，又花了錢。要嘛全押要嘛不做——折衷是創業者最常犯的錯。'});
+  if(G.decisions.some(d=>d.title==='景氣崩潰'))insights.push({t:'危機中的選擇',l:'裁員立刻改善數字但破壞組織和客戶。逆勢綁團隊短期現金壓力巨大，但留下的團隊在景氣回暖時領先對手。危機暴露真正的經營哲學。'});
+  if(G.hb<35||G.roots<25)insights.push({t:'死亡螺旋的教訓',l:'正向飛輪增益慢（+2），死亡螺旋損耗快（-4、-5）。建立信任三年，摧毀信任三天。一旦進入螺旋，恢復成本是預防成本的數倍。'});
+  if(G.assets.length>=3)insights.push({t:'被動收入的力量',l:'資產組合能建立第二收入引擎。但買資產立刻壓低動脈——時機比數量重要。在動脈健康時佈局，在危機時靠被動收入撐過去。'});
+  if(!insights.length)insights.push({t:'持續經營',l:'每個決策都有代價。好的 CEO 不是做出完美決策，而是在不完美的選擇中找到最能存活的路。'});
+  insights.forEach(ins=>{
+    h+=`<div class="knowledge-box"><div class="kb-title">${ins.t}</div><div class="kb-lesson">${ins.l}</div></div>`;
+  });
+
+  h+=`</div>`; // end review-section
+
+  // Legacy
   if(maxPick>0&&avail.length>0){
     h+=`<div class="card" style="text-align:left;margin-top:16px"><div class="card-title">🧬 傳承特質（選 ${maxPick} 個帶入下局）</div>
       <div style="font-size:12px;color:var(--dim);margin-bottom:10px">你的經營軌跡解鎖了以下特質</div>`;
@@ -915,10 +1014,12 @@ function endGame(){
       h+=`<button class="trait-btn" data-tid="${t.id}" onclick="pickTrait(this,'${t.id}')">
         <div class="trait-name">${t.name}</div><div class="trait-fx">${t.desc}：${t.fx}</div></button>`;
     });
-    h+=`<button class="btn-primary" onclick="saveLegacy(${maxPick})">確認傳承並結束</button></div>`;
+    h+=`<button class="btn-primary" onclick="saveLegacy(${maxPick})">確認傳承</button></div>`;
   }
   h+=`<button class="btn-primary" style="margin-top:12px" onclick="location.reload()">再來一局</button></div>`;
   document.getElementById('content').innerHTML=h;
+  // Scroll to top
+  document.getElementById('main').scrollTop=0;
   window._legacyMax=maxPick;window._legacySel=[];
 }
 
