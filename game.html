@@ -151,6 +151,26 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 .modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:90%;max-width:600px;max-height:85vh;overflow-y:auto;padding:24px}
 .modal-title{font-size:18px;font-weight:800;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
 .modal-close{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer}
+
+/* Growth Mode indicator */
+.growth-badge{display:inline-block;font-size:10px;padding:3px 10px;border-radius:10px;background:linear-gradient(135deg,#052e16,#064e3b);color:#22c55e;border:1px solid #166534;font-weight:700;letter-spacing:1px;animation:growthPulse 3s infinite}
+@keyframes growthPulse{0%,100%{box-shadow:0 0 6px rgba(34,197,94,.2)}50%{box-shadow:0 0 16px rgba(34,197,94,.4)}}
+.growth-transition{animation:growthUnlock 1s ease;text-align:center;padding:20px;margin:14px 0;border-radius:var(--radius);background:linear-gradient(135deg,#052e16,#0a2e1a);border:2px solid #166534}
+@keyframes growthUnlock{0%{opacity:0;transform:scale(.8)}50%{transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+
+/* Threshold warnings */
+.threshold-warn{font-size:9px;padding:3px 8px;border-radius:4px;margin-top:4px;animation:warnBlink 2s infinite}
+.threshold-near-growth{background:#052e16;color:#22c55e;border:1px solid #166534}
+.threshold-near-spiral{background:#450a0a;color:#fca5a5;border:1px solid #991b1b}
+@keyframes warnBlink{0%,100%{opacity:.7}50%{opacity:1}}
+
+/* Settlement stagger animation */
+.settle-stagger{opacity:0;animation:staggerIn .3s ease forwards}
+@keyframes staggerIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+
+/* Storm season indicator */
+.storm-badge{font-size:9px;padding:2px 8px;border-radius:8px;background:#7f1d1d;color:#fca5a5;margin-left:6px}
+.calm-badge{font-size:9px;padding:2px 8px;border-radius:8px;background:#052e16;color:#86efac;margin-left:6px}
 .chart-wrap{background:var(--card);border-radius:8px;padding:16px;margin-bottom:16px}
 .chart-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
@@ -222,6 +242,7 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 <div class="lifeline"><div class="ll-head"><span class="ll-name">現金動脈</span><span class="ll-val" id="sb-av">70%</span></div>
 <div class="ll-bar"><div class="ll-fill" id="sb-ab" style="width:70%;background:var(--green)"></div></div></div>
 <div id="sb-nw-wrap"></div>
+<div id="sb-warnings"></div>
 </div>
 <div class="sb-section">
 <div class="sb-title">命脈</div>
@@ -244,9 +265,15 @@ const G={cash:392,hb:70,roots:55,revenue:180,expense:140,expDelta:0,revDelta:0,s
 foreshadows:[],investEffects:[],activeProject:null,projectCooldown:0,completedProjects:[],
 mode:'normal',maxSeasons:20,ai:null,ai2:null,aiPhase:{},ai2Phase:{},traits:[],decayHb:2,decayRoots:1,
 assets:[],stocks:[],marketPrices:{'deal-x1':30,'deal-x2':40,'deal-x3':20},currentDealCard:null,currentExpenseCard:null,
-history:[],decisions:[],companyName:'',nearDeaths:0,milestones:[],spiralCount:0,flywheelCount:0};
+history:[],decisions:[],companyName:'',nearDeaths:0,milestones:[],spiralCount:0,flywheelCount:0,
+growthMode:false,growthModeTriggeredAt:null,seasonMood:'normal'};
 
 const artery=()=>{const e=G.expense+G.expDelta;return e<=0?100:Math.min(100,Math.max(0,G.cash/(e*4)*100));};
+const getPassiveIncome=()=>G.assets.reduce((s,a)=>s+a.cf,0);
+const growthPct=()=>{const e=eE();return e<=0?0:Math.round(getPassiveIncome()/e*100);};
+function checkGrowthMode(){if(!G.growthMode&&getPassiveIncome()>=eE()*0.30&&getPassiveIncome()>0){G.growthMode=true;G.growthModeTriggeredAt=G.season;return true;}return false;}
+function rollSeasonMood(){const r=Math.random();G.seasonMood=r<0.15?'storm':r<0.35?'calm':'normal';}
+const moodBadge=()=>G.seasonMood==='storm'?'<span class="storm-badge">⚡ 風暴季</span>':G.seasonMood==='calm'?'<span class="calm-badge">☀️ 平靜季</span>':'';
 const eR=()=>G.revenue+G.revDelta, eE=()=>G.expense+G.expDelta;
 const yr=()=>Math.floor(G.season/4)+1, qr=()=>G.season%4+1, isDec=()=>G.season%2===0;
 const sL=()=>`Y${yr()}Q${qr()} ${isDec()?'決策季':'營運季'}`;
@@ -320,7 +347,22 @@ opts:[{l:'A',t:'威脅換人（bluff）',fx:{},fs:{n:'議價結果',d:1,fx:{cash
 {id:26,title:'投資人條件',year:[3,5],desc:'外部投資人願意投 $200 萬，但要 20% 股權 + 董事席位。',tag:'negotiate',
 opts:[{l:'A',t:'接受條件',fx:{cash:200,hb:-3},fs:{n:'投資人壓力',d:4,fx:{hb:-5}},diary:'「$200 萬到帳的那一刻很爽。但從此每個決策都要跟股東報告。」'},
   {l:'B',t:'堅持底線：15% 無董事席',fx:{hb:3},fs:{n:'談判結果',d:1,fx:{cash:150},rnd:{fail:{},ch:40}},diary:'「堅持底線的代價可能是空手而歸。但這是我的公司。」'},
-  {l:'C',t:'可轉債方案（不稀釋股權）',fx:{cash:150},fs:{n:'轉債到期',d:6,fx:{cash:-180}},diary:'「可轉債讓我保住控制權。但利息是時間的代價。」'}]}
+  {l:'C',t:'可轉債方案（不稀釋股權）',fx:{cash:150},fs:{n:'轉債到期',d:6,fx:{cash:-180}},diary:'「可轉債讓我保住控制權。但利息是時間的代價。」'}]},
+// ── Growth Mode cards (成長模式解鎖) ──
+{id:27,title:'上市還是不上市？',year:[3,5],desc:'投資銀行看到你的被動收入結構，主動提出上市輔導。但上市意味著更多透明度和更高的合規成本。',tag:'negotiate',growthOnly:true,
+opts:[{l:'A',t:'啟動上市籌備',fx:{cash:300,hb:-8},fs:{n:'上市壓力',d:3,fx:{hb:-6,cash:80}},diary:'「敲鐘那一天，我想起的是所有沒睡的夜晚。」'},
+  {l:'B',t:'保持私有，繼續累積',fx:{hb:5,roots:3},diary:'「不上市不代表不成功。自由的代價是——你買得起。」'},
+  {l:'C',t:'引入策略投資人（非公開）',fx:{cash:150,roots:-3},diary:'「拿聰明錢，不拿急錢。」'}]},
+{id:28,title:'併購同業',year:[3,5],desc:'一家同業經營不善，開價 $200 萬出售。你的被動收入足以支撐整合期的現金消耗。',tag:'negotiate',growthOnly:true,
+opts:[{l:'A',t:'全額收購',fx:{cash:-200,roots:12,hb:-5},fs:{n:'整合陣痛',d:3,fx:{hb:6,roots:5}},gate:{artery:50},diary:'「買公司容易，融合文化是真正的挑戰。」'},
+  {l:'B',t:'觀望不買',fx:{roots:2},diary:'「不是每個機會都值得抓。有時候最好的交易是你沒做的那筆。」'}]},
+{id:29,title:'國際擴張',year:[4,5],desc:'被動收入穩定後，你有餘裕考慮東南亞市場。當地合作夥伴已經找好了。',tag:'timing',growthOnly:true,
+opts:[{l:'A',t:'設立海外子公司',fx:{cash:-180,roots:-5,hb:3},fs:{n:'海外據點',d:4,fx:{roots:15,cash:50}},gate:{artery:55},diary:'「第一次在護照上蓋的章是商務簽。從此，公司不只屬於這座島。」'},
+  {l:'B',t:'授權代理模式',fx:{cash:-50,roots:3},fs:{n:'代理回報',d:3,fx:{cash:30}},diary:'「讓別人用你的品牌賺錢，你抽成。風險小，但控制力也小。」'}]},
+{id:30,title:'打造第二曲線',year:[3,5],desc:'核心事業穩定了，團隊提出了一個全新的產品線概念。需要 $150 萬和半年時間。',growthOnly:true,
+opts:[{l:'A',t:'全力投入第二曲線',fx:{cash:-150,hb:5,roots:-4},fs:{n:'第二曲線',d:5,fx:{cash:80,roots:8},rnd:{fail:{cash:-80,hb:-5},ch:35}},diary:'「第一條曲線讓你活著。第二條曲線讓你自由。」'},
+  {l:'B',t:'專注核心，深化護城河',fx:{hb:3,roots:5},diary:'「在一件事上做到極致，比做十件事做到普通好。」'},
+  {l:'C',t:'小規模試水（$50萬）',fx:{cash:-50,hb:2},fs:{n:'試水結果',d:3,fx:{cash:20},rnd:{fail:{cash:-20},ch:40}},diary:'「用最小的籌碼驗證最大的假設。」'}]}
 ];
 
 // Cascade sub-cards (級聯子牌)
@@ -528,22 +570,26 @@ function runSeason(){
   updateSB();
   // Record history snapshot
   G.history.push({s:G.season,cash:Math.round(G.cash),hb:G.hb,roots:G.roots,art:Math.round(artery()),nw:calcNW()});
+  // Season mood (rhythm variation)
+  rollSeasonMood();
   // Expense triggers inline in invest phase now
   if(G.season>0)tryExpense();
   phases=[];
   phases.push('invest');
   if(isDec()){
-    phases.push('entropy');
-    if(G.mode==='challenge')phases.push('entropy2');
-    if(shouldTriggerAIEvent())phases.push('aiEvent');
+    if(G.seasonMood!=='calm') phases.push('entropy');
+    if(G.mode==='challenge'&&G.seasonMood!=='calm') phases.push('entropy2');
+    if(G.seasonMood==='storm') phases.push('entropy'); // double entropy in storm
+    if(shouldTriggerAIEvent()) phases.push('aiEvent');
     phases.push('decision');
   } else {
     phases.push('execution');
-    // Opportunity card chance in operation seasons
+    if(G.seasonMood==='storm'&&Math.random()<0.4){ phases.push('entropy'); } // storm: 40% chance entropy in ops
     if(rollOpp()) phases.push('opportunity');
+    if(G.seasonMood==='calm'&&Math.random()<0.5) phases.push('opportunity'); // calm = extra chance of good news
   }
   phases.push('settle');
-  phases.push('postSettle'); // combined market + deal
+  phases.push('postSettle');
   nextPhase();
 }
 
@@ -682,40 +728,45 @@ function pickDec(cid,oi){
 
 // ═══════ INVESTMENT ═══════
 function showInvest(){
-  const mx=artery()>=70?2:1;const noC=artery()<30;
-  const items=[
-    // ── 基礎（常駐）──
+  const gm=G.growthMode;
+  const mx=gm?(artery()>=70?3:2):(artery()>=70?2:1);const noC=artery()<30;
+  // Build full pool
+  const pool=[
     {name:'調薪／發獎金',cost:60,fx:{hb:7},desc:'心跳 +7「花錢買安心」',tp:'hb',ceo:'最直接的留人手段，但不改結構'},
     {name:'員工培訓',cost:100,fx:{hb:5},desc:'心跳+5，+3/季×3季「投資人才」',tp:'hb',sus:{hb:3,s:3},ceo:'短期花大錢，但持續回報——人才是最好的資產'},
     {name:'客戶回饋',cost:50,fx:{roots:5},desc:'根系 +5「維護關係」',tp:'cl',ceo:'便宜但只治標，客戶需要的是長期價值'},
     {name:'客戶深耕',cost:80,fx:{roots:4},desc:'根系+4，+3/季×4季「建立忠誠」',tp:'cl',sus:{roots:3,s:4},ceo:'最划算的長期投資，但需要耐心等回報'},
   ];
-  // ── 狀態觸發型（根據你的處境動態出現）──
-  if(G.hb<50) items.push({name:'🚨 緊急團建',cost:30,fx:{hb:5},desc:'心跳+5「緊急滅火」',tp:'hb',ceo:'士氣低迷時的急救，但治標不治本'});
-  if(G.roots<40) items.push({name:'🚨 客戶挽留方案',cost:40,fx:{roots:6},desc:'根系+6「止血」',tp:'cl',ceo:'客戶要跑了才挽留，成本是預防的兩倍'});
-  if(artery()<35) items.push({name:'🏦 緊急貸款',cost:-80,fx:{},desc:'現金+$80萬，支出永久+$10萬',tp:'hb',permExp:10,ceo:'借錢續命——利息會一直跟著你'});
-  // ── 取捨型（犧牲一個維度換另一個）──
   if(yr()>=2){
-    items.push({name:'加速擴張',cost:90,fx:{roots:8,hb:-3},desc:'根系+8 心跳-3「拼市場傷團隊」',tp:'cl',ceo:'快速擴張的代價是團隊被壓榨'});
-    items.push({name:'內部效率優化',cost:70,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',permExp:-5,ceo:'精簡流程省成本，但過程中團隊會有陣痛'});
+    pool.push({name:'加速擴張',cost:90,fx:{roots:8,hb:-3},desc:'根系+8 心跳-3「拼市場傷團隊」',tp:'cl',ceo:'快速擴張的代價是團隊被壓榨'});
+    pool.push({name:'內部效率優化',cost:70,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',permExp:-5,ceo:'精簡流程省成本，但過程中團隊會有陣痛'});
   }
-  // ── Y3+ 競爭類 ──
   if(yr()>=3){
-    items.push({name:'🆕 市場拓展',cost:120,fx:{roots:6},desc:'根系+6，+2/季×3季',tp:'cl',sus:{roots:2,s:3},ceo:'開拓新市場需要持續投入，但客戶來源更多元'});
-    items.push({name:'🆕 技術研發',cost:150,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',permExp:-5,ceo:'技術護城河——短期花大錢，長期省更多'});
-    items.push({name:'🆕 品牌行銷',cost:80,fx:{roots:3,hb:2},desc:'根系+3 心跳+2「內外兼修」',tp:'cl',ceo:'品牌投資回報慢，但復利效果驚人'});
+    pool.push({name:'市場拓展',cost:120,fx:{roots:6},desc:'根系+6，+2/季×3季',tp:'cl',sus:{roots:2,s:3},ceo:'開拓新市場需要持續投入，但客戶來源更多元'});
+    pool.push({name:'技術研發',cost:150,fx:{hb:4},desc:'心跳+4，支出永久-$5萬',tp:'hb',permExp:-5,ceo:'技術護城河——短期花大錢，長期省更多'});
+    pool.push({name:'品牌行銷',cost:80,fx:{roots:3,hb:2},desc:'根系+3 心跳+2「內外兼修」',tp:'cl',ceo:'品牌投資回報慢，但復利效果驚人'});
   }
-  // ── Y4+ 進階 ──
   if(yr()>=4){
-    items.push({name:'🆕 數位轉型',cost:130,fx:{hb:-2,roots:5},desc:'根系+5 心跳-2，支出永久-$8萬',tp:'cl',permExp:-8,ceo:'轉型期團隊陣痛，但長期降本增效'});
-    items.push({name:'🆕 高管教練',cost:60,fx:{hb:6},desc:'心跳+6「投資領導力」',tp:'hb',ceo:'好的教練讓你的決策品質提升，影響整個組織'});
+    pool.push({name:'數位轉型',cost:130,fx:{hb:-2,roots:5},desc:'根系+5 心跳-2，支出永久-$8萬',tp:'cl',permExp:-8,ceo:'轉型期團隊陣痛，但長期降本增效'});
+    pool.push({name:'高管教練',cost:60,fx:{hb:6},desc:'心跳+6「投資領導力」',tp:'hb',ceo:'好的教練讓你的決策品質提升，影響整個組織'});
   }
-  // ── Y5 傳承 ──
   if(yr()>=5){
-    items.push({name:'🆕 企業傳承規劃',cost:100,fx:{hb:10,roots:-3},desc:'心跳+10 根系-3',tp:'hb',ceo:'交接期客戶不安，但組織因為有方向而凝聚'});
+    pool.push({name:'企業傳承規劃',cost:100,fx:{hb:10,roots:-3},desc:'心跳+10 根系-3',tp:'hb',ceo:'交接期客戶不安，但組織因為有方向而凝聯'});
   }
+  // Growth mode: add premium investments
+  if(gm){
+    pool.push({name:'🌟 跨國佈局',cost:200,fx:{roots:10,hb:-3},desc:'根系+10 心跳-3，+4/季×4季',tp:'cl',sus:{roots:4,s:4},ceo:'成長模式的護城河——全球化'});
+    pool.push({name:'🌟 併購基金',cost:180,fx:{roots:5,hb:5},desc:'根系+5 心跳+5，收入永久+$20萬',tp:'hb',permRev:20,ceo:'用錢買時間，用規模換利潤'});
+  }
+  // Randomly draw 3 from pool (Cashflow-style)
+  const shuffled=pool.sort(()=>Math.random()-0.5);
+  const items=shuffled.slice(0,gm?4:3);
+  // Always add emergency items if conditions met
+  if(G.hb<50&&!items.some(i=>i.name.includes('緊急團建'))) items.push({name:'🚨 緊急團建',cost:30,fx:{hb:5},desc:'心跳+5「緊急滅火」',tp:'hb',ceo:'士氣低迷時的急救，但治標不治本'});
+  if(G.roots<40&&!items.some(i=>i.name.includes('挽留'))) items.push({name:'🚨 客戶挽留方案',cost:40,fx:{roots:6},desc:'根系+6「止血」',tp:'cl',ceo:'客戶要跑了才挽留，成本是預防的兩倍'});
+  if(artery()<35) items.push({name:'🏦 緊急貸款',cost:-80,fx:{},desc:'現金+$80萬，支出永久+$10萬',tp:'hb',permExp:10,ceo:'借錢續命——利息會一直跟著你'});
   const pj=getAvailProj();
-  let h=`<div class="phase-title">💰 投資階段　<span style="font-size:11px;color:var(--dim);font-weight:400">可投 ${mx} 項</span></div>`;
+  let h=`<div class="phase-title">💰 投資階段　<span style="font-size:11px;color:var(--dim);font-weight:400">可投 ${mx} 項　本季抽到 ${items.length} 個選項</span>${moodBadge()}</div>`;
   // Inline expense notification
   if(G.currentExpenseCard){
     const ec=G.currentExpenseCard;
@@ -729,7 +780,8 @@ function showInvest(){
     <div style="font-size:11px;color:var(--dim);margin-bottom:10px">身為 CEO，你這季要把錢花在哪裡？</div>
     <div class="invest-grid">`;
   items.forEach((o,i)=>{
-    const lk=(o.cost>0&&(noC||o.cost>G.cash||(o.tp==='cl'&&noC)))||mx===0;
+    const isEmergency=o.cost<0||o.name.includes('🚨');
+    const lk=isEmergency?false:(o.cost>0&&(noC||o.cost>G.cash||(o.tp==='cl'&&noC)));
     h+=`<button class="invest-btn ${lk?'locked':''}" data-i="${i}" onclick="tInv(this,${i})">
       <span class="inv-cost">${o.cost>=0?'$'+o.cost+'萬':'+$'+Math.abs(o.cost)+'萬'}</span><span class="inv-name">${o.name}</span>
       <div class="inv-fx">${o.desc}</div>
@@ -762,7 +814,7 @@ function showInvest(){
   window._inv=items;window._sel=[];window._mx=mx;
 }
 function tInv(el,i){const s=window._sel;const x=s.indexOf(i);if(x>=0){s.splice(x,1);el.classList.remove('selected');}else if(s.length<window._mx){s.push(i);el.classList.add('selected');}}
-function cInv(){(window._sel||[]).forEach(i=>{const o=window._inv[i];G.cash-=o.cost;aFx(o.fx);if(o.sus)G.investEffects.push({...o.sus,r:o.sus.s});if(o.permExp)G.expDelta+=o.permExp;
+function cInv(){(window._sel||[]).forEach(i=>{const o=window._inv[i];G.cash-=o.cost;aFx(o.fx);if(o.sus)G.investEffects.push({...o.sus,r:o.sus.s});if(o.permExp)G.expDelta+=o.permExp;if(o.permRev)G.revDelta+=o.permRev;
   G.decisions.push({season:G.season,label:sL(),title:'投資：'+o.name,chosen:'—',chosenText:o.name,chosenFx:{cash:-o.cost,...o.fx},allOpts:[],hasForeshadow:false,fsName:''});
 });clamp();updateSB();nextPhase();}
 function getAvailProj(){if(G.activeProject)return[];return PROJ.filter(p=>yr()>=p.minY&&!G.completedProjects.includes(p.id)&&getM(p.gt)>p.gv).slice(0,2);}
@@ -781,7 +833,7 @@ function showEntropy(){
   const can=artery()>=c.g;
   const tag=c.tag==='hidden'?'tag-hidden':'tag-entropy';
   const tagT=c.tag==='hidden'?'極端事件':'熵';
-  let h=`<div class="phase-title">🌀 熵牌 — 強制事件</div><div class="card phase-transition">
+  let h=`<div class="phase-title">🌀 熵牌 — 強制事件${moodBadge()}</div><div class="card phase-transition">
     <div class="card-band band-entropy"></div>
     <span class="card-tag ${tag}">${tagT}</span>
     <div class="card-title">${c.title}</div><div class="card-desc">${c.desc}</div>
@@ -806,9 +858,9 @@ function showDec(){
     }
     G._pendingCascade=null;
   }
-  const y=yr();let pool=DC.filter(c=>y>=c.year[0]&&y<=c.year[1]&&!usedD.includes(c.id));
+  const y=yr();let pool=DC.filter(c=>y>=c.year[0]&&y<=c.year[1]&&!usedD.includes(c.id)&&(!c.growthOnly||G.growthMode));
   if(G.mode==='challenge')pool=[...pool,...HIDDEN_DC.filter(c=>y>=c.year[0]&&y<=c.year[1]&&!usedD.includes(c.id))];
-  if(!pool.length){usedD=[];pool=DC.filter(c=>y>=c.year[0]&&y<=c.year[1]);}
+  if(!pool.length){usedD=[];pool=DC.filter(c=>y>=c.year[0]&&y<=c.year[1]&&(!c.growthOnly||G.growthMode));}
   const card=pool[Math.floor(Math.random()*pool.length)];
   renderCard(card,card.tag||'decision');
 }
@@ -817,7 +869,7 @@ function showDec(){
 function showExec(){
   const idx=[];while(idx.length<2){const i=Math.floor(Math.random()*OC.length);if(!idx.includes(i))idx.push(i);}
   const drawn=idx.map(i=>OC[i]);
-  let h=`<div class="phase-title">⚡ 執行卡 — 選 1 張處理</div>`;
+  let h=`<div class="phase-title">⚡ 執行卡 — 選 1 張處理${moodBadge()}</div>`;
   drawn.forEach((c,i)=>{
     h+=`<div class="card phase-transition"><div class="card-band band-ops"></div><span class="card-tag tag-ops">營運</span>
       <div class="card-title">${c.title}</div><div class="card-desc">${c.desc}</div>
@@ -1074,15 +1126,20 @@ function doSettle(){
     if(fs.rnd&&Math.random()*100<fs.rnd.ch)fx=fs.rnd.fail;
     aFx(fx);log.push({l:`伏筆：${fs.n}`,v:fT(fx)+srcTag});return false;}return true;});
 
-  // Flywheel
-  if(G.hb>65){G.roots+=2;log.push({l:'飛輪',v:'心跳→根系+2'});}
-  if(G.roots>65){G.hb+=2;log.push({l:'飛輪',v:'根系→心跳+2'});}
+  // Flywheel (growth mode = ×1.5)
+  const fwm=G.growthMode?3:2;const fwc=G.growthMode?'成長飛輪':'飛輪';
+  if(G.hb>65){G.roots+=fwm;log.push({l:fwc,v:`心跳→根系+${fwm}`});}
+  if(G.roots>65){G.hb+=fwm;log.push({l:fwc,v:`根系→心跳+${fwm}`});}
   if(G.roots>55)G.cash+=Math.round(eR()*0.1);
   if(G.hb>75)G.cash+=Math.round(eE()*0.05);
 
-  // Spiral
-  if(G.hb<35){G.roots-=4;log.push({l:'螺旋',v:'心跳↓→根系-4'});}
-  if(G.roots<25)G.hb-=3;if(artery()<30){G.hb-=5;log.push({l:'螺旋',v:'現金↓→心跳-5'});}if(artery()<25)G.roots-=3;
+  // Spiral (growth mode = ×1.5 penalty too)
+  const spm=G.growthMode?6:4;const spc=G.growthMode?7:5;
+  if(G.hb<35){G.roots-=spm;log.push({l:'螺旋',v:`心跳↓→根系-${spm}`});}
+  if(G.roots<25)G.hb-=3;if(artery()<30){G.hb-=spc;log.push({l:'螺旋',v:`現金↓→心跳-${spc}`});}if(artery()<25)G.roots-=3;
+
+  // Growth mode check
+  const justUnlocked=checkGrowthMode();
 
   // Decay + AI decay
   G.hb-=G.decayHb+aiDecayH;G.roots-=G.decayRoots+Math.max(0,aiDecayR);
@@ -1136,17 +1193,35 @@ function doSettle(){
     }
   }
 
-  let h=`<div class="phase-title">📊 ${G.companyName} — 董事會報告 ${sL()}</div><div class="card">
+  // Growth mode unlock celebration
+  let growthUnlockHtml='';
+  if(justUnlocked){
+    growthUnlockHtml=`<div class="growth-transition">
+      <div style="font-size:24px;margin-bottom:8px">🚀</div>
+      <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:6px">成長模式解鎖！</div>
+      <div style="font-size:12px;color:var(--dim);line-height:1.6">你的被動收入已達支出的 ${growthPct()}%。<br>
+      從現在開始：投資額度增加、新決策牌解鎖、飛輪加倍——但螺旋懲罰也加倍。<br>
+      <span style="color:var(--accent)">「當錢開始替你工作，遊戲規則就不一樣了。」</span></div></div>`;
+  }
+
+  let h=`<div class="phase-title">📊 ${G.companyName} — 董事會報告 ${sL()}${G.growthMode?'<span class="growth-badge" style="margin-left:8px">📈 成長模式</span>':''}</div><div class="card">
     <div class="settle-mood ${moodClass}">${mood}</div>
     <div style="font-size:11px;color:var(--dim);margin-bottom:10px;font-style:italic">${ceoMood}</div>
+    ${growthUnlockHtml}
     ${milestone?`<div style="font-size:12px;padding:8px 10px;background:#052e16;border:1px solid #166534;border-radius:6px;margin-bottom:10px;color:var(--green)">${milestone}</div>`:''}`;
+  let rowIdx=0;
   [{l:'現金動脈',b:b.art,a:a.art,u:'%'},{l:'組織心跳',b:b.hb,a:a.hb,u:''},{l:'客戶根系',b:b.roots,a:a.roots,u:''},{l:'可用現金',b:b.cash,a:a.cash,u:'萬'}].forEach(m=>{
     const d=Math.round((m.a-m.b)*10)/10;const cls=d>0?'delta-pos':d<0?'delta-neg':'';
     const fmt=v=>m.u==='%'?Math.round(v)+'%':m.u==='萬'?'$'+Math.round(v)+'萬':Math.round(v);
-    h+=`<div class="settle-row"><span>${m.l}</span><span>${fmt(m.a)} <span class="${cls}">(${d>0?'+':''}${m.u==='%'?Math.round(d)+'%':m.u==='萬'?'$'+Math.round(d)+'萬':Math.round(d)})</span></span></div>`;
+    h+=`<div class="settle-row settle-stagger" style="animation-delay:${rowIdx*150}ms"><span>${m.l}</span><span>${fmt(m.a)} <span class="${cls}">(${d>0?'+':''}${m.u==='%'?Math.round(d)+'%':m.u==='萬'?'$'+Math.round(d)+'萬':Math.round(d)})</span></span></div>`;
+    rowIdx++;
   });
-  if(log.length){h+=`<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border)">`;log.forEach(l=>h+=`<div style="font-size:11px;color:var(--dim);padding:2px 0">${l.l}：${l.v}</div>`);h+=`</div>`;}
-  if(G.foreshadows.length)h+=`<div style="margin-top:6px"><span class="fs-dot"></span><span style="font-size:10px;color:var(--purple)">${G.foreshadows.length} 伏筆潛伏</span></div>`;
+  if(log.length){h+=`<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border)">`;log.forEach((l,i)=>{
+    const isForeshadow=l.l.includes('伏筆');const isFlywheel=l.l.includes('飛輪');const isSpiral=l.l.includes('螺旋');
+    const specialStyle=isForeshadow?'color:var(--purple);font-weight:600':isFlywheel?'color:var(--green);font-weight:600':isSpiral?'color:var(--red);font-weight:600':'color:var(--dim)';
+    h+=`<div class="settle-stagger" style="font-size:11px;${specialStyle};padding:2px 0;animation-delay:${(rowIdx+i)*150}ms">${isForeshadow?'⏳':isFlywheel?'🚀':isSpiral?'🌀':''}${l.l}：${l.v}</div>`;
+  });h+=`</div>`;}
+  if(G.foreshadows.length)h+=`<div class="settle-stagger" style="margin-top:6px;animation-delay:${(rowIdx+log.length)*150}ms"><span class="fs-dot"></span><span style="font-size:10px;color:var(--purple)">${G.foreshadows.length} 伏筆潛伏</span></div>`;
   if(!G.alive){h+=`<div style="margin-top:14px;padding:14px;background:#7f1d1d;border-radius:8px;text-align:center"><div style="font-size:16px;font-weight:700">☠ 資金斷裂</div></div><button class="btn-primary" onclick="endGame()">結果</button>`;}
   else{h+=`<button class="btn-primary" onclick="nextPhase()">下一季 →</button>`;}
   h+=`</div>`;document.getElementById('content').innerHTML=h;updateSB();
@@ -1183,6 +1258,7 @@ function endGame(){
       <div class="stat-box"><div class="label">淨資產</div><div class="val">$${calcNW()}萬</div></div>
     </div>
     <div style="display:flex;justify-content:center;gap:16px;margin:12px 0;font-size:11px;color:var(--dim)">
+      ${G.growthMode?`<span style="color:var(--green)">🚀 成長模式 Y${Math.floor(G.growthModeTriggeredAt/4)+1}Q${G.growthModeTriggeredAt%4+1} 解鎖</span>`:''}
       <span>⚡ 飛輪啟動 ${G.flywheelCount} 季</span>
       <span>🌀 螺旋觸發 ${G.spiralCount} 季</span>
       <span>💀 差點死亡 ${G.nearDeaths} 次</span>
@@ -1277,7 +1353,7 @@ function endGame(){
 
 function calcScore(){
   if(!G.alive)return 0;
-  return Math.round(artery()*1.5+G.hb*1.5+G.roots*1.5+50+G.completedProjects.length*30+Math.min(30,calcNW()/20));
+  return Math.round(artery()*1.5+G.hb*1.5+G.roots*1.5+50+G.completedProjects.length*30+Math.min(30,calcNW()/20)+(G.growthMode?50:0));
 }
 function calcGrade(){
   if(!G.alive)return G.season>=18?'D':'F';
@@ -1317,6 +1393,17 @@ function updateSB(){
   document.getElementById('sb-rv').textContent=G.roots;
   const rb=document.getElementById('sb-rb');rb.style.width=G.roots+'%';rb.style.background=zc(G.roots);
   document.getElementById('sb-rz').textContent=`${ze(G.roots)} ${rd(G.roots)}`;
+
+  // Threshold warnings
+  let warnHtml='';
+  if(!G.growthMode&&G.assets.length>0){
+    const pct=growthPct();
+    if(pct>=15&&pct<30) warnHtml+=`<div class="threshold-warn threshold-near-growth">📈 被動收入 ${pct}%／支出 — 再 ${30-pct}% 解鎖成長模式！</div>`;
+  }
+  if(G.growthMode){warnHtml+=`<div class="threshold-warn threshold-near-growth" style="animation:none;opacity:.8">🚀 成長模式 · 被動收入 ${growthPct()}%</div>`;}
+  if(a>=25&&a<35) warnHtml+=`<div class="threshold-warn threshold-near-spiral">⚠️ 動脈 ${Math.round(a)}% — 接近螺旋觸發</div>`;
+  if(G.hb>=30&&G.hb<40) warnHtml+=`<div class="threshold-warn threshold-near-spiral">⚠️ 心跳 ${G.hb} — 接近螺旋觸發</div>`;
+  document.getElementById('sb-warnings').innerHTML=warnHtml;
 
   // Market — AI personality
   let mk='';
