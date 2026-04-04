@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>熵與奮鬥者 — CEO 商業策略模擬</title>
+<title>逆熵 — CEO 決策模擬</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0e17;--card:#141b2d;--panel:#0d1220;--border:#1e2a42;--text:#e2e8f0;--dim:#64748b;
@@ -218,13 +218,13 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 
 <div id="start-screen">
 <div>
-<h1>熵與奮鬥者</h1>
-<p>一個讓你在 20 個季度內，親身經歷公司從創立到第五年的所有關鍵轉折。<br>遊戲不教你答案。遊戲讓你親身見證自己決策的終點。</p>
+<h1>逆熵</h1>
+<p>五年。20 個決策。每一個都有代價。</p>
 <div style="margin-bottom:16px"><input id="company-name" type="text" placeholder="為你的公司取個名字" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:8px;font-size:14px;width:220px;text-align:center;outline:none" maxlength="12"></div>
 <div id="legacy-display"></div>
 <div class="mode-grid">
-<button class="mode-btn" onclick="startGame('normal')"><h3>🏢 正常模式</h3><p>20 季　1 AI 對手<br>適合初次經營</p></button>
-<button class="mode-btn" onclick="startGame('challenge')"><h3>🔥 挑戰模式</h3><p>24 季　2 AI 對手<br>極端場景、隱藏牌組</p></button>
+<button class="mode-btn" onclick="startGame('normal')"><h3>🏢 經典模式</h3><p>5 年 · 1 個對手<br>「先活下來」</p></button>
+<button class="mode-btn" onclick="startGame('challenge')"><h3>🔥 地獄模式</h3><p>6 年 · 2 個對手<br>「活下來只是開始」</p></button>
 </div>
 </div>
 </div>
@@ -233,7 +233,7 @@ border:1px solid var(--border);background:linear-gradient(135deg,#0f172a,#131d32
 <button class="mob-toggle" onclick="toggleSidebar()">☰</button>
 <div class="mob-overlay" id="mob-overlay" onclick="toggleSidebar()"></div>
 <aside id="sidebar">
-<div class="sb-header"><div class="sb-logo" id="sb-logo">熵與奮鬥者</div><div class="sb-season" id="sb-season">Y1Q1</div></div>
+<div class="sb-header"><div class="sb-logo" id="sb-logo">逆熵</div><div class="sb-season" id="sb-season">Y1Q1</div></div>
 <div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--dim)"><span>Y1</span><span id="sb-progress-pct">0%</span><span>Y5</span></div><div class="progress-bar"><div class="progress-fill" id="sb-progress" style="width:0%"></div></div></div>
 <div class="sb-section">
 <div class="sb-title">財務</div>
@@ -1376,7 +1376,7 @@ function saveLegacy(max){
 // ═══════ SIDEBAR ═══════
 function updateSB(){
   const a=artery();
-  document.getElementById('sb-logo').textContent=G.companyName||'熵與奮鬥者';
+  document.getElementById('sb-logo').textContent=G.companyName||'逆熵';
   document.getElementById('sb-season').textContent=sL();
   const pct=Math.round((G.season/G.maxSeasons)*100);
   document.getElementById('sb-progress').style.width=pct+'%';
